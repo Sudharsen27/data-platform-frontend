@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Card from "@/components/Card";
-import Navbar from "@/components/Navbar";
-import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/layout/Navbar";
+import Sidebar from "@/components/layout/Sidebar";
+import StatsCard from "@/components/dashboard/StatsCard";
+import PieChart from "@/components/charts/PieChart";
+import LineChart from "@/components/charts/LineChart";
+import BarChart from "@/components/charts/BarChart";
 import { getDashboardData } from "@/lib/api";
 
 function normalizeDashboardData(data) {
@@ -57,20 +60,21 @@ export default function DashboardPage() {
       {
         title: "Success Rate",
         value: `${normalized.successRate}%`,
-        subtitle: "Data processing accuracy",
       },
       {
         title: "Failed Records",
         value: normalized.failedRecords,
-        subtitle: "Records requiring attention",
       },
       {
         title: "Active Jobs",
         value: normalized.activeJobs,
-        subtitle: "Running ingestion pipelines",
       },
     ];
   }, [dashboardData]);
+
+  const pieData = dashboardData?.success_vs_failed || [];
+  const trendData = dashboardData?.records_trend || [];
+  const errorDistributionData = dashboardData?.error_distribution || [];
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -78,7 +82,7 @@ export default function DashboardPage() {
         <Sidebar />
         <div className="flex-1">
           <Navbar />
-          <main className="p-6">
+          <main className="space-y-6 p-6">
             {isLoading ? (
               <div className="rounded-xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500 shadow-sm">
                 Loading dashboard data...
@@ -88,16 +92,20 @@ export default function DashboardPage() {
                 {errorMessage}
               </div>
             ) : (
-              <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {kpis.map((kpi) => (
-                  <Card
-                    key={kpi.title}
-                    title={kpi.title}
-                    value={kpi.value}
-                    subtitle={kpi.subtitle}
-                  />
-                ))}
-              </section>
+              <>
+                <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {kpis.map((kpi) => (
+                    <StatsCard key={kpi.title} title={kpi.title} value={kpi.value} />
+                  ))}
+                </section>
+                <section className="grid gap-4 xl:grid-cols-2">
+                  <PieChart data={pieData} />
+                  <BarChart data={errorDistributionData} />
+                </section>
+                <section>
+                  <LineChart data={trendData} />
+                </section>
+              </>
             )}
           </main>
         </div>
