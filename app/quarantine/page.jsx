@@ -5,9 +5,11 @@ import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import DataTable from "@/components/table/DataTable";
 import { getQuarantine, getRules, updateQuarantine } from "@/lib/api";
+import { useRequireAuth } from "@/lib/auth";
 import { validateRowWithRules } from "@/utils/validation";
 
 export default function QuarantinePage() {
+  const { isCheckingAuth } = useRequireAuth();
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
@@ -79,6 +81,14 @@ export default function QuarantinePage() {
     } finally {
       setSavingId(null);
     }
+  }
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-600">
+        Checking authentication...
+      </div>
+    );
   }
 
   return (

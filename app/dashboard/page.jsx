@@ -7,7 +7,8 @@ import StatsCard from "@/components/dashboard/StatsCard";
 import PieChart from "@/components/charts/PieChart";
 import LineChart from "@/components/charts/LineChart";
 import BarChart from "@/components/charts/BarChart";
-import { getDashboardData } from "@/lib/api";
+import { getDashboardData, getSyncJobs } from "@/lib/api";
+import { useRequireAuth } from "@/lib/auth";
 
 function normalizeDashboardData(data) {
   return {
@@ -33,7 +34,9 @@ function normalizeDashboardData(data) {
 }
 
 export default function DashboardPage() {
+  const { isCheckingAuth } = useRequireAuth();
   const [dashboardData, setDashboardData] = useState(null);
+  const [syncJobs, setSyncJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -41,8 +44,9 @@ export default function DashboardPage() {
     async function loadData() {
       try {
         setIsLoading(true);
-        const data = await getDashboardData();
+        const [data, jobs] = await Promise.all([getDashboardData(), getSyncJobs()]);
         setDashboardData(data);
+        setSyncJobs(jobs);
       } catch (error) {
         setErrorMessage(error.message || "Unable to load dashboard data.");
       } finally {
@@ -75,6 +79,15 @@ export default function DashboardPage() {
   const pieData = dashboardData?.success_vs_failed || [];
   const trendData = dashboardData?.records_trend || [];
   const errorDistributionData = dashboardData?.error_distribution || [];
+  const lastSyncJob = dashboardData?.last_sync_job;
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-600">
+        Checking authentication...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -104,6 +117,42 @@ export default function DashboardPage() {
                 </section>
                 <section>
                   <LineChart data={trendData} />
+                </section>
+                <section className="grid gap-4 xl:grid-cols-2">
+                  <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+                    <h3 className="text-base font-semibold text-zinc-900">Last Sync Run</h3>
+                    {lastSyncJob ? (
+                      <div className="mt-4 space-y-2 text-sm text-zinc-700">
+                        <p>
+                          <span className="font-medium">Status:</span> {lastSyncJob.status}
+                        </p>
+                        <p>
+                          <span className="font-medium">Rows:</span> Q{" "}
+                          {lastSyncJob.quarantine_rows_synced}, R {lastSyncJob.rules_synced}
+                        </p>
+                        <p>
+                          <span className="font-medium">Started:</span>{" "}
+                          {new Date(lastSyncJob.start_time).toLocaleString()}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="mt-4 text-sm text-zinc-500">No sync has run yet.</p>
+                    )}
+                  </div>
+                  <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
+                    <h3 className="text-base font-semibold text-zinc-900">Recent Job History</h3>
+                    <ul className="mt-4 space-y-2 text-sm text-zinc-700">
+                      {syncJobs.slice(0, 5).map((job) => (
+                        <li key={job.id} className="flex items-center justify-between">
+                          <span>Job #{job.id}</span>
+                          <span className="text-zinc-500">{job.status}</span>
+                        </li>
+                      ))}
+                      {syncJobs.length === 0 ? (
+                        <li className="text-zinc-500">No jobs available.</li>
+                      ) : null}
+                    </ul>
+                  </div>
                 </section>
               </>
             )}

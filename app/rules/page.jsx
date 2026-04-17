@@ -6,8 +6,10 @@ import Sidebar from "@/components/layout/Sidebar";
 import RuleForm from "@/components/rules/RuleForm";
 import RuleTable from "@/components/rules/RuleTable";
 import { addRule, deleteRule, getRules, updateRule } from "@/lib/api";
+import { useRequireAuth } from "@/lib/auth";
 
 export default function RulesPage() {
+  const { isCheckingAuth } = useRequireAuth();
   const [rules, setRules] = useState([]);
   const [editingRule, setEditingRule] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +89,14 @@ export default function RulesPage() {
 
   function handleCancelEdit() {
     setEditingRule(null);
+  }
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-600">
+        Checking authentication...
+      </div>
+    );
   }
 
   return (

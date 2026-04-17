@@ -4,6 +4,8 @@ const navItems = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Quarantine", href: "/quarantine" },
   { name: "Rules", href: "/rules" },
+  { name: "Jobs", href: "/jobs" },
+  { name: "Audit", href: "/audit" },
 ];
 
 export default function Sidebar() {

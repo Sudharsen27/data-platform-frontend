@@ -4,7 +4,7 @@ import {
   Bar,
   BarChart as RechartsBarChart,
   CartesianGrid,
-  Legend,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,20 +12,77 @@ import {
 } from "recharts";
 
 export default function BarChart({ data }) {
+  const chartData = Array.isArray(data) ? data : [];
+  const hasData = chartData.length > 0;
+  const COLORS = ["#f97316", "#fb923c", "#fdba74", "#f59e0b", "#f97316"];
+
+  const CustomTooltip = ({ active, payload }) => {
+    if (!active || !payload || !payload.length) {
+      return null;
+    }
+
+    const { type, count } = payload[0].payload;
+    return (
+      <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 shadow-lg">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Error Type
+        </p>
+        <p className="text-sm font-semibold text-zinc-900">{type}</p>
+        <p className="mt-1 text-xs text-zinc-600">
+          Count: <span className="font-semibold text-zinc-900">{count}</span>
+        </p>
+      </div>
+    );
+  };
+
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <h3 className="text-base font-semibold text-zinc-900">Error Distribution</h3>
-      <div className="mt-4 h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <RechartsBarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
-            <XAxis dataKey="type" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="count" fill="#f97316" radius={[6, 6, 0, 0]} />
-          </RechartsBarChart>
-        </ResponsiveContainer>
+    <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-zinc-900">Error Distribution</h3>
+          <p className="mt-1 text-xs text-zinc-500">
+            Live breakdown of current data quality issues
+          </p>
+        </div>
+        <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700">
+          {chartData.reduce((sum, item) => sum + Number(item.count || 0), 0)} total errors
+        </span>
+      </div>
+
+      <div className="h-72">
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsBarChart
+              data={chartData}
+              margin={{ top: 8, right: 8, left: -16, bottom: 6 }}
+            >
+              <CartesianGrid strokeDasharray="4 4" stroke="#e4e4e7" vertical={false} />
+              <XAxis
+                dataKey="type"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: "#71717a", fontSize: 12 }}
+                interval={0}
+              />
+              <YAxis
+                allowDecimals={false}
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: "#71717a", fontSize: 12 }}
+              />
+              <Tooltip cursor={{ fill: "#fef3c7" }} content={<CustomTooltip />} />
+              <Bar dataKey="count" radius={[10, 10, 0, 0]} maxBarSize={56}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${entry.type}-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50">
+            <p className="text-sm text-zinc-500">No error records available right now.</p>
+          </div>
+        )}
       </div>
     </div>
   );
