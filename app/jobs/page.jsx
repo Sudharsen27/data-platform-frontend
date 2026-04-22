@@ -5,6 +5,10 @@ import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import { getSyncJobs, retrySyncJob, triggerSnowflakeSync } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import Toast from "@/components/ui/Toast";
+import { Table } from "@/components/ui/Table";
 
 function formatDate(value) {
   if (!value) {
@@ -47,6 +51,19 @@ export default function JobsPage() {
     loadJobs();
   }, []);
 
+  useEffect(() => {
+    if (!message && !errorMessage) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setMessage("");
+      setErrorMessage("");
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [message, errorMessage]);
+
   async function handleManualSync() {
     try {
       setIsManualSyncRunning(true);
@@ -87,11 +104,13 @@ export default function JobsPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      <Toast message={message} type="success" />
+      <Toast message={errorMessage} type="error" />
       <div className="flex min-h-screen flex-col md:flex-row">
         <Sidebar />
         <div className="flex-1">
           <Navbar title="Sync Jobs" />
-          <main className="space-y-4 p-6">
+          <main className="space-y-6 p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-zinc-900">Sync Job History</h2>
@@ -99,87 +118,60 @@ export default function JobsPage() {
                   Track Snowflake sync runs and retry failed jobs.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleManualSync}
-                disabled={isManualSyncRunning}
-                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-500"
-              >
+              <Button onClick={handleManualSync} disabled={isManualSyncRunning}>
                 {isManualSyncRunning ? "Running..." : "Run Manual Sync"}
-              </button>
+              </Button>
             </div>
 
-            {message ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {message}
-              </div>
-            ) : null}
-            {errorMessage ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {errorMessage}
-              </div>
-            ) : null}
-
             {isLoading ? (
-              <div className="rounded-xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500 shadow-sm">
-                Loading sync jobs...
-              </div>
+              <Card>
+                <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
+                <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+              </Card>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-                <table className="min-w-full divide-y divide-zinc-200 text-sm">
-                  <thead className="bg-zinc-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">Job ID</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">Status</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">Start</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">End</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">Rows</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">Triggered By</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {jobs.map((job) => (
-                      <tr key={job.id}>
-                        <td className="px-4 py-3 font-medium text-zinc-800">#{job.id}</td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                              job.status === "success"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : job.status === "failed"
-                                ? "bg-red-50 text-red-700"
-                                : "bg-zinc-100 text-zinc-700"
-                            }`}
-                          >
-                            {job.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-zinc-700">{formatDate(job.start_time)}</td>
-                        <td className="px-4 py-3 text-zinc-700">{formatDate(job.end_time)}</td>
-                        <td className="px-4 py-3 text-zinc-700">
-                          Q: {job.quarantine_rows_synced}, R: {job.rules_synced}
-                        </td>
-                        <td className="px-4 py-3 text-zinc-700">{job.triggered_by}</td>
-                        <td className="px-4 py-3">
-                          {job.status === "failed" ? (
-                            <button
-                              type="button"
-                              onClick={() => handleRetry(job.id)}
-                              disabled={retryingId === job.id}
-                              className="rounded-md border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {retryingId === job.id ? "Retrying..." : "Retry"}
-                            </button>
-                          ) : (
-                            <span className="text-zinc-400">-</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                columns={["Job ID", "Status", "Start", "End", "Rows", "Triggered By", "Action"]}
+                data={jobs}
+                emptyMessage="No sync jobs available."
+                renderRow={(job) => (
+                  <>
+                    <td className="px-4 py-3 font-medium text-zinc-800">#{job.id}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                          job.status === "success"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : job.status === "failed"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-zinc-100 text-zinc-700"
+                        }`}
+                      >
+                        {job.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-zinc-700">{formatDate(job.start_time)}</td>
+                    <td className="px-4 py-3 text-zinc-700">{formatDate(job.end_time)}</td>
+                    <td className="px-4 py-3 text-zinc-700">
+                      Q: {job.quarantine_rows_synced}, R: {job.rules_synced}
+                    </td>
+                    <td className="px-4 py-3 text-zinc-700">{job.triggered_by}</td>
+                    <td className="px-4 py-3">
+                      {job.status === "failed" ? (
+                        <Button
+                          onClick={() => handleRetry(job.id)}
+                          disabled={retryingId === job.id}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          {retryingId === job.id ? "Retrying..." : "Retry"}
+                        </Button>
+                      ) : (
+                        <span className="text-zinc-400">-</span>
+                      )}
+                    </td>
+                  </>
+                )}
+              />
             )}
           </main>
         </div>

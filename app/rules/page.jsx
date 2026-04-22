@@ -7,6 +7,8 @@ import RuleForm from "@/components/rules/RuleForm";
 import RuleTable from "@/components/rules/RuleTable";
 import { addRule, deleteRule, getRules, updateRule } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
+import Card from "@/components/ui/Card";
+import Toast from "@/components/ui/Toast";
 
 export default function RulesPage() {
   const { isCheckingAuth } = useRequireAuth();
@@ -34,6 +36,19 @@ export default function RulesPage() {
 
     loadRules();
   }, []);
+
+  useEffect(() => {
+    if (!message && !errorMessage) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setMessage("");
+      setErrorMessage("");
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [message, errorMessage]);
 
   async function handleSaveRule(ruleData) {
     try {
@@ -101,6 +116,8 @@ export default function RulesPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      <Toast message={message} type="success" />
+      <Toast message={errorMessage} type="error" />
       <div className="flex min-h-screen flex-col md:flex-row">
         <Sidebar />
         <div className="flex-1">
@@ -122,20 +139,11 @@ export default function RulesPage() {
                 isSubmitting={isSubmitting}
               />
               <div className="space-y-4">
-                {message ? (
-                  <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                    {message}
-                  </div>
-                ) : null}
-                {errorMessage ? (
-                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {errorMessage}
-                  </div>
-                ) : null}
                 {isLoading ? (
-                  <div className="rounded-xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500 shadow-sm">
-                    Loading rules...
-                  </div>
+                  <Card>
+                    <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
+                    <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+                  </Card>
                 ) : (
                   <RuleTable
                     rules={rules}

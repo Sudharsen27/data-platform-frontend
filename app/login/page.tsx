@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loginUser } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import Button from "@/components/ui/Button";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,12 +15,13 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
+    router.prefetch("/dashboard");
     if (isReady && isAuthenticated) {
       router.replace("/dashboard");
     }
   }, [isReady, isAuthenticated, router]);
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
     try {
@@ -29,15 +31,17 @@ export default function LoginPage() {
       const response = await loginUser({ email, password });
       login(response.access_token);
       router.push("/dashboard");
-    } catch (error) {
-      setErrorMessage(error.message || "Login failed.");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Login failed.";
+      setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-6">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
       <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold text-zinc-900">Login</h1>
         <p className="mt-1 text-sm text-zinc-600">
@@ -74,13 +78,9 @@ export default function LoginPage() {
             </div>
           ) : null}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-500"
-          >
+          <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? "Signing in..." : "Sign in"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

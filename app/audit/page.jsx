@@ -5,6 +5,8 @@ import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import { getAuditLogs } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
+import Card from "@/components/ui/Card";
+import { Table } from "@/components/ui/Table";
 
 function formatDate(value) {
   if (!value) {
@@ -49,7 +51,7 @@ export default function AuditPage() {
         <Sidebar />
         <div className="flex-1">
           <Navbar title="Audit Logs" />
-          <main className="space-y-4 p-6">
+          <main className="space-y-6 p-6">
             <div>
               <h2 className="text-lg font-semibold text-zinc-900">Change History</h2>
               <p className="mt-1 text-sm text-zinc-600">
@@ -64,41 +66,25 @@ export default function AuditPage() {
             ) : null}
 
             {isLoading ? (
-              <div className="rounded-xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500 shadow-sm">
-                Loading audit logs...
-              </div>
+              <Card>
+                <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
+                <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+              </Card>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-                <table className="min-w-full divide-y divide-zinc-200 text-sm">
-                  <thead className="bg-zinc-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">User</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">Field</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">Old Value</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">New Value</th>
-                      <th className="px-4 py-3 text-left font-semibold text-zinc-600">Timestamp</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {logs.map((log) => (
-                      <tr key={log.id}>
-                        <td className="px-4 py-3 font-medium text-zinc-800">{log.user_id}</td>
-                        <td className="px-4 py-3 text-zinc-700">{log.field_changed}</td>
-                        <td className="px-4 py-3 text-zinc-700">{log.old_value || "-"}</td>
-                        <td className="px-4 py-3 text-zinc-700">{log.new_value || "-"}</td>
-                        <td className="px-4 py-3 text-zinc-700">{formatDate(log.timestamp)}</td>
-                      </tr>
-                    ))}
-                    {logs.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-4 py-6 text-center text-zinc-500">
-                          No audit logs found yet.
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
+              <Table
+                columns={["User", "Field", "Old Value", "New Value", "Timestamp"]}
+                data={logs}
+                emptyMessage="No audit logs found yet."
+                renderRow={(log) => (
+                  <>
+                    <td className="px-4 py-3 font-medium text-zinc-800">{log.user_id}</td>
+                    <td className="px-4 py-3 text-zinc-700">{log.field_changed}</td>
+                    <td className="px-4 py-3 text-zinc-700">{log.old_value || "-"}</td>
+                    <td className="px-4 py-3 text-zinc-700">{log.new_value || "-"}</td>
+                    <td className="px-4 py-3 text-zinc-700">{formatDate(log.timestamp)}</td>
+                  </>
+                )}
+              />
             )}
           </main>
         </div>

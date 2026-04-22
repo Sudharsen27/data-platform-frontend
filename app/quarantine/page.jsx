@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import DataTable from "@/components/table/DataTable";
-import { getQuarantine, getRules, updateQuarantine } from "@/lib/api";
+import { getQuarantinePage, getRules, updateQuarantine } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { validateRowWithRules } from "@/utils/validation";
+import Card from "@/components/ui/Card";
+import Toast from "@/components/ui/Toast";
+import Button from "@/components/ui/Button";
 
 export default function QuarantinePage() {
   const { isCheckingAuth } = useRequireAuth();
@@ -16,19 +19,23 @@ export default function QuarantinePage() {
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [rules, setRules] = useState([]);
+  const [offset, setOffset] = useState(0);
+  const [limit] = useState(50);
+  const [totalRows, setTotalRows] = useState(0);
 
   useEffect(() => {
     async function fetchQuarantineRows() {
       try {
         setIsLoading(true);
-        const [quarantineRows, validationRules] = await Promise.all([
-          getQuarantine(),
+        const [pageData, validationRules] = await Promise.all([
+          getQuarantinePage({ offset, limit }),
           getRules(),
         ]);
 
         setRules(validationRules);
+        setTotalRows(pageData.total || 0);
         setRows(
-          quarantineRows.map((row) => {
+          pageData.items.map((row) => {
             const result = validateRowWithRules(row, validationRules);
             return { ...row, ...result };
           })
@@ -41,7 +48,20 @@ export default function QuarantinePage() {
     }
 
     fetchQuarantineRows();
-  }, []);
+  }, [offset, limit]);
+
+  useEffect(() => {
+    if (!message && !errorMessage) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setMessage("");
+      setErrorMessage("");
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [message, errorMessage]);
 
   function handleFieldChange(id, field, value) {
     setRows((currentRows) =>
@@ -76,6 +96,15 @@ export default function QuarantinePage() {
       setMessage("");
       await updateQuarantine(payload);
       setMessage(`Record ${id} updated successfully.`);
+      setRows((currentRows) =>
+        currentRows.map((row) => {
+          if (row.id !== id) {
+            return row;
+          }
+          const result = validateRowWithRules(payload, rules);
+          return { ...row, ...payload, ...result };
+        })
+      );
     } catch (error) {
       setErrorMessage(error.message || "Failed to update record.");
     } finally {
@@ -93,11 +122,13 @@ export default function QuarantinePage() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      <Toast message={message} type="success" />
+      <Toast message={errorMessage} type="error" />
       <div className="flex min-h-screen flex-col md:flex-row">
         <Sidebar />
         <div className="flex-1">
           <Navbar title="Quarantine" />
-          <main className="space-y-4 p-6">
+          <main className="space-y-6 p-6">
             <div>
               <h2 className="text-lg font-semibold text-zinc-900">
                 Quarantined Records
@@ -106,27 +137,44 @@ export default function QuarantinePage() {
                 Fix invalid records inline and save updates.
               </p>
             </div>
-            {message ? (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {message}
-              </div>
-            ) : null}
-            {errorMessage ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {errorMessage}
-              </div>
-            ) : null}
             {isLoading ? (
-              <div className="rounded-xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500 shadow-sm">
-                Loading quarantine records...
-              </div>
+              <Card>
+                <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
+                <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+              </Card>
             ) : (
-              <DataTable
-                rows={rows}
-                onFieldChange={handleFieldChange}
-                onSave={handleSave}
-                savingId={savingId}
-              />
+              <div className="space-y-4">
+                <DataTable
+                  rows={rows}
+                  onFieldChange={handleFieldChange}
+                  onSave={handleSave}
+                  savingId={savingId}
+                />
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
+                  <span>
+                    Showing {rows.length === 0 ? 0 : offset + 1}-
+                    {Math.min(offset + rows.length, totalRows)} of {totalRows}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={offset === 0 || isLoading}
+                      onClick={() => setOffset((current) => Math.max(0, current - limit))}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={offset + limit >= totalRows || isLoading}
+                      onClick={() => setOffset((current) => current + limit)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
           </main>
         </div>
