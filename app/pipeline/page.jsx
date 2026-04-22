@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
-import { getPipelineRuns } from "@/lib/api";
+import { getHealthStatus, getPipelineRuns } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -58,6 +58,13 @@ export default function PipelinePage() {
   const [runs, setRuns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [healthStatus, setHealthStatus] = useState({
+    api: "unknown",
+    database: "unknown",
+    snowflake: "unknown",
+    timestamp: null,
+  });
+  const [isHealthLoading, setIsHealthLoading] = useState(false);
 
   useEffect(() => {
     async function loadPipelineRuns() {
@@ -73,8 +80,49 @@ export default function PipelinePage() {
       }
     }
 
+    async function loadHealthData() {
+      try {
+        setIsHealthLoading(true);
+        const status = await getHealthStatus();
+        setHealthStatus(status);
+      } catch {
+        setHealthStatus({
+          api: "failed",
+          database: "failed",
+          snowflake: "failed",
+          timestamp: null,
+        });
+      } finally {
+        setIsHealthLoading(false);
+      }
+    }
+
     loadPipelineRuns();
+    loadHealthData();
   }, []);
+
+  async function handleRefreshHealth() {
+    try {
+      setIsHealthLoading(true);
+      const status = await getHealthStatus();
+      setHealthStatus(status);
+    } finally {
+      setIsHealthLoading(false);
+    }
+  }
+
+  function healthBadgeClass(status) {
+    if (status === "ok") {
+      return "bg-emerald-50 text-emerald-700";
+    }
+    if (status === "skipped") {
+      return "bg-zinc-100 text-zinc-700";
+    }
+    if (status === "failed" || status === "degraded") {
+      return "bg-rose-50 text-rose-700";
+    }
+    return "bg-amber-50 text-amber-700";
+  }
 
   if (isCheckingAuth) {
     return (
@@ -103,6 +151,54 @@ export default function PipelinePage() {
                 {errorMessage}
               </div>
             ) : null}
+
+            <Card title="System Health" subtitle="Quick checks for API, database, and Snowflake connectivity.">
+              <div className="grid gap-3 text-sm text-zinc-700 sm:grid-cols-2 lg:grid-cols-4">
+                <p className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2">
+                  <span className="font-medium">API</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${healthBadgeClass(
+                      healthStatus.api
+                    )}`}
+                  >
+                    {healthStatus.api}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2">
+                  <span className="font-medium">Database</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${healthBadgeClass(
+                      healthStatus.database
+                    )}`}
+                  >
+                    {healthStatus.database}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2">
+                  <span className="font-medium">Snowflake</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${healthBadgeClass(
+                      healthStatus.snowflake
+                    )}`}
+                  >
+                    {healthStatus.snowflake}
+                  </span>
+                </p>
+                <div className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2">
+                  <div>
+                    <p className="font-medium">Last Checked</p>
+                    <p className="text-xs text-zinc-500">
+                      {healthStatus.timestamp
+                        ? new Date(healthStatus.timestamp).toLocaleString()
+                        : "Not yet checked"}
+                    </p>
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={handleRefreshHealth} disabled={isHealthLoading}>
+                    {isHealthLoading ? "Checking..." : "Check"}
+                  </Button>
+                </div>
+              </div>
+            </Card>
 
             {isLoading ? (
               <Card>
