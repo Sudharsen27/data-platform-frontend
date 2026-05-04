@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import { getHealthStatus, getPipelineRuns } from "@/lib/api";
-import { useRequireAuth } from "@/lib/auth";
+import { useRequireAdmin } from "@/lib/auth";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import Toast from "@/components/ui/Toast";
+import Spinner from "@/components/ui/Spinner";
+import StatusBadge from "@/components/ui/StatusBadge";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 
 function parseAsUtc(value) {
   if (!value) {
@@ -40,21 +44,8 @@ function formatDuration(startValue, endValue) {
   return `${minutes}m ${seconds}s`;
 }
 
-function statusClassName(status) {
-  if (status === "success") {
-    return "bg-emerald-50 text-emerald-700";
-  }
-  if (status === "running") {
-    return "bg-amber-50 text-amber-700";
-  }
-  if (status === "failed") {
-    return "bg-rose-50 text-rose-700";
-  }
-  return "bg-zinc-100 text-zinc-700";
-}
-
 export default function PipelinePage() {
-  const { isCheckingAuth } = useRequireAuth();
+  const { isCheckingAuth } = useRequireAdmin();
   const [runs, setRuns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -65,6 +56,8 @@ export default function PipelinePage() {
     timestamp: null,
   });
   const [isHealthLoading, setIsHealthLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState("success");
 
   useEffect(() => {
     async function loadPipelineRuns() {
@@ -101,11 +94,24 @@ export default function PipelinePage() {
     loadHealthData();
   }, []);
 
+  useEffect(() => {
+    if (!toastMessage) {
+      return;
+    }
+    const timer = setTimeout(() => setToastMessage(""), 2500);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
+
   async function handleRefreshHealth() {
     try {
       setIsHealthLoading(true);
       const status = await getHealthStatus();
       setHealthStatus(status);
+      setToastType("success");
+      setToastMessage("System health updated.");
+    } catch (error) {
+      setToastType("error");
+      setToastMessage(error.message || "Failed to refresh health.");
     } finally {
       setIsHealthLoading(false);
     }
@@ -134,11 +140,13 @@ export default function PipelinePage() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      <Toast message={toastMessage} type={toastType} />
       <div className="flex min-h-screen flex-col md:flex-row">
         <Sidebar />
         <div className="flex-1">
           <Navbar title="Pipeline Monitoring" />
           <main className="space-y-6 p-6">
+            <Breadcrumbs items={[{ label: "Home" }, { label: "Pipeline", current: true }]} />
             <section>
               <h2 className="text-lg font-semibold text-zinc-900">Pipeline Runs</h2>
               <p className="mt-1 text-sm text-zinc-600">
@@ -202,8 +210,10 @@ export default function PipelinePage() {
 
             {isLoading ? (
               <Card>
-                <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
-                <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+                <div className="flex items-center gap-2 text-sm text-zinc-600">
+                  <Spinner />
+                  Loading pipeline runs...
+                </div>
               </Card>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -235,13 +245,7 @@ export default function PipelinePage() {
                       <tr key={run.id} className="border-b border-zinc-100 hover:bg-zinc-50/70">
                         <td className="px-4 py-3 font-medium text-zinc-800">#{run.id}</td>
                         <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClassName(
-                              run.status
-                            )}`}
-                          >
-                            {run.status}
-                          </span>
+                          <StatusBadge status={run.status} />
                         </td>
                         <td className="px-4 py-3 text-zinc-700">{run.records_processed}</td>
                         <td className="px-4 py-3 text-zinc-700">

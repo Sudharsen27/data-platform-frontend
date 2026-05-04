@@ -4,15 +4,19 @@ import { useEffect, useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Sidebar from "@/components/layout/Sidebar";
 import DataTable from "@/components/table/DataTable";
-import { getQuarantinePage, getRules, updateQuarantine } from "@/lib/api";
+import { exportQuarantineCsv, getQuarantinePage, getRules, updateQuarantine } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 import { validateRowWithRules } from "@/utils/validation";
 import Card from "@/components/ui/Card";
 import Toast from "@/components/ui/Toast";
 import Button from "@/components/ui/Button";
+import Spinner from "@/components/ui/Spinner";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 
 export default function QuarantinePage() {
   const { isCheckingAuth } = useRequireAuth();
+  const { isAdmin } = useAuth();
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
@@ -22,6 +26,8 @@ export default function QuarantinePage() {
   const [offset, setOffset] = useState(0);
   const [limit] = useState(50);
   const [totalRows, setTotalRows] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     async function fetchQuarantineRows() {
@@ -112,6 +118,18 @@ export default function QuarantinePage() {
     }
   }
 
+  async function handleExportCsv() {
+    try {
+      setIsExporting(true);
+      setErrorMessage("");
+      await exportQuarantineCsv();
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to export quarantine CSV.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   if (isCheckingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-600">
@@ -119,6 +137,19 @@ export default function QuarantinePage() {
       </div>
     );
   }
+
+  const filteredRows = rows.filter((row) => {
+    const needle = searchTerm.trim().toLowerCase();
+    if (!needle) {
+      return true;
+    }
+    return (
+      String(row.id).includes(needle) ||
+      String(row.name || "").toLowerCase().includes(needle) ||
+      String(row.email || "").toLowerCase().includes(needle) ||
+      String(row.error || "").toLowerCase().includes(needle)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-zinc-50">
@@ -129,31 +160,62 @@ export default function QuarantinePage() {
         <div className="flex-1">
           <Navbar title="Quarantine" />
           <main className="space-y-6 p-6">
-            <div>
-              <h2 className="text-lg font-semibold text-zinc-900">
-                Quarantined Records
-              </h2>
-              <p className="mt-1 text-sm text-zinc-600">
-                Fix invalid records inline and save updates.
-              </p>
+            <Breadcrumbs items={[{ label: "Home" }, { label: "Quarantine", current: true }]} />
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-zinc-900">
+                  Quarantined Records
+                </h2>
+                <p className="mt-1 text-sm text-zinc-600">
+                  {isAdmin
+                    ? "Fix invalid records inline and save updates."
+                    : "View quarantined records. Only admins can edit and save changes."}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleExportCsv}
+                disabled={isExporting}
+              >
+                {isExporting ? "Exporting..." : "Export CSV"}
+              </Button>
             </div>
+            <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by id, name, email, or error"
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            {!isAdmin ? (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                Read-only mode for your account.
+              </div>
+            ) : null}
             {isLoading ? (
               <Card>
-                <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
-                <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+                <div className="flex items-center gap-2 text-sm text-zinc-600">
+                  <Spinner />
+                  Loading quarantine records...
+                </div>
               </Card>
             ) : (
               <div className="space-y-4">
                 <DataTable
-                  rows={rows}
+                  rows={filteredRows}
                   onFieldChange={handleFieldChange}
                   onSave={handleSave}
                   savingId={savingId}
+                  readOnly={!isAdmin}
                 />
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
                   <span>
-                    Showing {rows.length === 0 ? 0 : offset + 1}-
-                    {Math.min(offset + rows.length, totalRows)} of {totalRows}
+                    Showing {filteredRows.length === 0 ? 0 : offset + 1}-
+                    {Math.min(offset + filteredRows.length, totalRows)} of {totalRows}
                   </span>
                   <div className="flex gap-2">
                     <Button

@@ -1,7 +1,14 @@
 import EditableCell from "@/components/table/EditableCell";
 import Button from "@/components/ui/Button";
+import EmptyState from "@/components/ui/EmptyState";
 
-export default function DataTable({ rows, onFieldChange, onSave, savingId = null }) {
+export default function DataTable({
+  rows,
+  onFieldChange,
+  onSave,
+  savingId = null,
+  readOnly = false,
+}) {
   return (
     <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
       <table className="min-w-full text-sm">
@@ -11,10 +18,24 @@ export default function DataTable({ rows, onFieldChange, onSave, savingId = null
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">Name</th>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">Email</th>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">Error Reason</th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">Action</th>
+            {readOnly ? null : (
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
+                Action
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={readOnly ? 4 : 5} className="px-4 py-6">
+                <EmptyState
+                  title="No quarantined records"
+                  description="No rows match your current filters."
+                />
+              </td>
+            </tr>
+          ) : null}
           {rows.map((row) => {
             const hasNameError = Boolean(row.fieldErrors?.name);
             const hasEmailError = Boolean(row.fieldErrors?.email);
@@ -27,6 +48,7 @@ export default function DataTable({ rows, onFieldChange, onSave, savingId = null
                     value={row.name}
                     placeholder="Enter name"
                     hasError={hasNameError}
+                    readOnly={readOnly}
                     onChange={(value) => onFieldChange(row.id, "name", value)}
                   />
                 </td>
@@ -35,6 +57,7 @@ export default function DataTable({ rows, onFieldChange, onSave, savingId = null
                     value={row.email}
                     placeholder="Enter email"
                     hasError={hasEmailError}
+                    readOnly={readOnly}
                     onChange={(value) => onFieldChange(row.id, "email", value)}
                   />
                 </td>
@@ -47,15 +70,17 @@ export default function DataTable({ rows, onFieldChange, onSave, savingId = null
                     <span className="text-zinc-400">No errors</span>
                   )}
                 </td>
-                <td className="px-4 py-3">
-                  <Button
-                    onClick={() => onSave(row.id)}
-                    disabled={savingId === row.id}
-                    size="sm"
-                  >
-                    {savingId === row.id ? "Saving..." : "Fix & Save"}
-                  </Button>
-                </td>
+                {readOnly ? null : (
+                  <td className="px-4 py-3">
+                    <Button
+                      onClick={() => onSave(row.id)}
+                      disabled={savingId === row.id}
+                      size="sm"
+                    >
+                      {savingId === row.id ? "Saving..." : "Fix & Save"}
+                    </Button>
+                  </td>
+                )}
               </tr>
             );
           })}

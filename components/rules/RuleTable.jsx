@@ -1,10 +1,12 @@
 import Button from "@/components/ui/Button";
+import StatusBadge from "@/components/ui/StatusBadge";
 
 export default function RuleTable({
   rules,
   onEdit,
   onDelete,
   deletingId = null,
+  readOnly = false,
 }) {
   return (
     <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -19,9 +21,11 @@ export default function RuleTable({
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
               Status
             </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
-              Actions
-            </th>
+            {readOnly ? null : (
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
+                Actions
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -33,35 +37,29 @@ export default function RuleTable({
               </td>
               <td className="px-4 py-3 text-zinc-700">{ruleItem.rule}</td>
               <td className="px-4 py-3">
-                <span
-                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                    ruleItem.status === "active"
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-zinc-100 text-zinc-600"
-                  }`}
-                >
-                  {ruleItem.status}
-                </span>
+                <StatusBadge status={ruleItem.status} />
               </td>
-              <td className="px-4 py-3">
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => onEdit(ruleItem)}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    onClick={() => onDelete(ruleItem.id)}
-                    disabled={deletingId === ruleItem.id}
-                    variant="danger"
-                    size="sm"
-                  >
-                    {deletingId === ruleItem.id ? "Deleting..." : "Delete"}
-                  </Button>
-                </div>
-              </td>
+              {readOnly ? null : (
+                <td className="px-4 py-3">
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => onEdit(ruleItem)}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      onClick={() => onDelete(ruleItem.id)}
+                      disabled={deletingId === ruleItem.id}
+                      variant="danger"
+                      size="sm"
+                    >
+                      {deletingId === ruleItem.id ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>

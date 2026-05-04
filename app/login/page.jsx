@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import LoginForm from "@/components/auth/LoginForm";
 import { useAuth } from "@/context/AuthContext";
 import { loginUser } from "@/lib/api";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isAuthenticated, isReady } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,9 +19,12 @@ export default function LoginPage() {
   useEffect(() => {
     router.prefetch("/dashboard");
     if (isReady && isAuthenticated) {
-      router.replace("/dashboard");
+      const next = searchParams.get("next");
+      const safeNext =
+        next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+      router.replace(safeNext);
     }
-  }, [isReady, isAuthenticated, router]);
+  }, [isReady, isAuthenticated, router, searchParams]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -42,9 +46,12 @@ export default function LoginPage() {
       const response = await loginUser({ email: email.trim(), password });
       login(response.access_token);
       setIsSubmitting(false);
-      setSuccessMessage("Signed in successfully. Redirecting to dashboard...");
+      setSuccessMessage("Signed in successfully. Redirecting...");
+      const next = searchParams.get("next");
+      const safeNext =
+        next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
       window.setTimeout(() => {
-        router.push("/dashboard");
+        router.replace(safeNext);
       }, 450);
     } catch (error) {
       const message =
@@ -116,5 +123,19 @@ export default function LoginPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[var(--color-background)] text-sm text-slate-600">
+          Loading sign-in…
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

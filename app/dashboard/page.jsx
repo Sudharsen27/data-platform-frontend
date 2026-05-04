@@ -14,9 +14,13 @@ import {
   runPipeline,
 } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Toast from "@/components/ui/Toast";
+import Spinner from "@/components/ui/Spinner";
+import StatusBadge from "@/components/ui/StatusBadge";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 
 function normalizeDashboardData(data) {
   return {
@@ -43,6 +47,7 @@ function normalizeDashboardData(data) {
 
 export default function DashboardPage() {
   const { isCheckingAuth } = useRequireAuth();
+  const { isAdmin } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [syncJobs, setSyncJobs] = useState([]);
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
@@ -213,10 +218,13 @@ export default function DashboardPage() {
         <div className="flex-1">
           <Navbar />
           <main className="space-y-6 p-6">
+            <Breadcrumbs items={[{ label: "Home" }, { label: "Dashboard", current: true }]} />
             {isDashboardLoading ? (
               <Card>
-                <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
-                <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+                <div className="flex items-center gap-2 text-sm text-zinc-600">
+                  <Spinner />
+                  Loading dashboard data...
+                </div>
               </Card>
             ) : dashboardError ? (
               <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700 shadow-sm">
@@ -246,7 +254,8 @@ export default function DashboardPage() {
                 {!isDashboardLoading && !dashboardError && lastSyncJob ? (
                   <div className="space-y-2 text-sm text-zinc-700">
                     <p>
-                      <span className="font-medium">Status:</span> {lastSyncJob.status}
+                      <span className="font-medium">Status:</span>{" "}
+                      <StatusBadge status={lastSyncJob.status} />
                     </p>
                     <p>
                       <span className="font-medium">Rows:</span> Q{" "}
@@ -275,7 +284,7 @@ export default function DashboardPage() {
                     {syncJobs.slice(0, 5).map((job) => (
                       <li key={job.id} className="flex items-center justify-between">
                         <span>Job #{job.id}</span>
-                        <span className="text-zinc-500">{job.status}</span>
+                        <StatusBadge status={job.status} />
                       </li>
                     ))}
                     {syncJobs.length === 0 ? (
@@ -286,7 +295,11 @@ export default function DashboardPage() {
               </Card>
               <Card
                 title="Pipeline Job Status"
-                subtitle="Run ETL-style pipeline on quarantine records."
+                subtitle={
+                  isAdmin
+                    ? "Run ETL-style pipeline on quarantine records."
+                    : "View pipeline status. Only admins can run the pipeline."
+                }
               >
                 <div className="space-y-3 text-sm text-zinc-700">
                   <div>
@@ -306,19 +319,7 @@ export default function DashboardPage() {
                   </div>
                   <p>
                     <span className="font-medium">Status:</span>{" "}
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        pipelineStatus.status === "success"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : pipelineStatus.status === "failed"
-                          ? "bg-rose-50 text-rose-700"
-                          : pipelineStatus.status === "running"
-                          ? "bg-amber-50 text-amber-700"
-                          : "bg-zinc-100 text-zinc-700"
-                      }`}
-                    >
-                      {pipelineStatus.status}
-                    </span>
+                    <StatusBadge status={pipelineStatus.status} />
                   </p>
                   <p className="text-zinc-600">{pipelineStatus.last_message}</p>
                   <p>
@@ -334,12 +335,21 @@ export default function DashboardPage() {
                   </p>
                   <Button
                     onClick={handleRunPipeline}
-                    disabled={isRunningPipeline || pipelineStatus.status === "running"}
+                    disabled={
+                      !isAdmin ||
+                      isRunningPipeline ||
+                      pipelineStatus.status === "running"
+                    }
                   >
                     {isRunningPipeline || pipelineStatus.status === "running"
-                      ? "Running Pipeline..."
+                      ? "Processing..."
                       : "Run Pipeline"}
                   </Button>
+                  {!isAdmin ? (
+                    <p className="text-xs text-zinc-500">
+                      Ask an administrator to run pipeline jobs.
+                    </p>
+                  ) : null}
                 </div>
               </Card>
             </section>

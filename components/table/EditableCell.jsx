@@ -3,7 +3,16 @@ export default function EditableCell({
   onChange,
   placeholder,
   hasError = false,
+  readOnly = false,
 }) {
+  if (readOnly) {
+    return (
+      <span className="block rounded-md border border-transparent bg-zinc-50 px-3 py-2 text-sm text-zinc-800">
+        {value || "—"}
+      </span>
+    );
+  }
+
   return (
     <input
       type="text"

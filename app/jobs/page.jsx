@@ -9,6 +9,9 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Toast from "@/components/ui/Toast";
 import { Table } from "@/components/ui/Table";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import StatusBadge from "@/components/ui/StatusBadge";
+import Spinner from "@/components/ui/Spinner";
 
 function formatDate(value) {
   if (!value) {
@@ -34,6 +37,7 @@ export default function JobsPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [retryingId, setRetryingId] = useState(null);
   const [isManualSyncRunning, setIsManualSyncRunning] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   async function loadJobs() {
     try {
@@ -102,6 +106,18 @@ export default function JobsPage() {
     );
   }
 
+  const filteredJobs = jobs.filter((job) => {
+    const needle = searchTerm.trim().toLowerCase();
+    if (!needle) {
+      return true;
+    }
+    return (
+      String(job.id).includes(needle) ||
+      String(job.status || "").toLowerCase().includes(needle) ||
+      String(job.triggered_by || "").toLowerCase().includes(needle)
+    );
+  });
+
   return (
     <div className="min-h-screen bg-zinc-50">
       <Toast message={message} type="success" />
@@ -111,6 +127,7 @@ export default function JobsPage() {
         <div className="flex-1">
           <Navbar title="Sync Jobs" />
           <main className="space-y-6 p-6">
+            <Breadcrumbs items={[{ label: "Home" }, { label: "Jobs", current: true }]} />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-zinc-900">Sync Job History</h2>
@@ -119,35 +136,30 @@ export default function JobsPage() {
                 </p>
               </div>
               <Button onClick={handleManualSync} disabled={isManualSyncRunning}>
-                {isManualSyncRunning ? "Running..." : "Run Manual Sync"}
+                {isManualSyncRunning ? "Processing..." : "Run Manual Sync"}
               </Button>
             </div>
 
             {isLoading ? (
               <Card>
-                <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
-                <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+                <div className="flex items-center gap-2 text-sm text-zinc-600">
+                  <Spinner />
+                  Loading sync jobs...
+                </div>
               </Card>
             ) : (
               <Table
                 columns={["Job ID", "Status", "Start", "End", "Rows", "Triggered By", "Action"]}
-                data={jobs}
+                data={filteredJobs}
                 emptyMessage="No sync jobs available."
+                searchValue={searchTerm}
+                onSearchChange={setSearchTerm}
+                searchPlaceholder="Search by job id, status, or trigger user"
                 renderRow={(job) => (
                   <>
                     <td className="px-4 py-3 font-medium text-zinc-800">#{job.id}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                          job.status === "success"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : job.status === "failed"
-                            ? "bg-red-50 text-red-700"
-                            : "bg-zinc-100 text-zinc-700"
-                        }`}
-                      >
-                        {job.status}
-                      </span>
+                      <StatusBadge status={job.status} />
                     </td>
                     <td className="px-4 py-3 text-zinc-700">{formatDate(job.start_time)}</td>
                     <td className="px-4 py-3 text-zinc-700">{formatDate(job.end_time)}</td>

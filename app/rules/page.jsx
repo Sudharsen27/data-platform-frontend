@@ -6,12 +6,16 @@ import Sidebar from "@/components/layout/Sidebar";
 import RuleForm from "@/components/rules/RuleForm";
 import RuleTable from "@/components/rules/RuleTable";
 import { addRule, deleteRule, getRules, updateRule } from "@/lib/api";
-import { useRequireAuth } from "@/lib/auth";
+import { useRequireAdmin } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 import Card from "@/components/ui/Card";
 import Toast from "@/components/ui/Toast";
+import Spinner from "@/components/ui/Spinner";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 
 export default function RulesPage() {
-  const { isCheckingAuth } = useRequireAuth();
+  const { isCheckingAuth } = useRequireAdmin();
+  const { isReady, isAuthenticated, isAdmin } = useAuth();
   const [rules, setRules] = useState([]);
   const [editingRule, setEditingRule] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,6 +25,10 @@ export default function RulesPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
+    if (!isReady || !isAuthenticated || !isAdmin) {
+      return;
+    }
+
     async function loadRules() {
       try {
         setIsLoading(true);
@@ -35,7 +43,7 @@ export default function RulesPage() {
     }
 
     loadRules();
-  }, []);
+  }, [isReady, isAuthenticated, isAdmin]);
 
   useEffect(() => {
     if (!message && !errorMessage) {
@@ -93,7 +101,7 @@ export default function RulesPage() {
       );
       setMessage("Rule deleted successfully.");
       if (editingRule?.id === ruleId) {
-      setEditingRule(null);
+        setEditingRule(null);
       }
     } catch (error) {
       setErrorMessage(error.message || "Failed to delete rule.");
@@ -123,6 +131,7 @@ export default function RulesPage() {
         <div className="flex-1">
           <Navbar title="Rules Engine" />
           <main className="space-y-6 p-6">
+            <Breadcrumbs items={[{ label: "Home" }, { label: "Rules", current: true }]} />
             <section>
               <h2 className="text-lg font-semibold text-zinc-900">Data Rules</h2>
               <p className="mt-1 text-sm text-zinc-600">
@@ -141,8 +150,10 @@ export default function RulesPage() {
               <div className="space-y-4">
                 {isLoading ? (
                   <Card>
-                    <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
-                    <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+                    <div className="flex items-center gap-2 text-sm text-zinc-600">
+                      <Spinner />
+                      Loading rules...
+                    </div>
                   </Card>
                 ) : (
                   <RuleTable

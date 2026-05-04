@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import Toast from "@/components/ui/Toast";
 import { approveStewardship, getStewardship, rejectStewardship } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 
 function statusBadge(status) {
   if (status === "approved") {
@@ -21,6 +22,7 @@ function statusBadge(status) {
 
 export default function StewardshipPage() {
   const { isCheckingAuth } = useRequireAuth();
+  const { isReady, isAuthenticated } = useAuth();
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeId, setActiveId] = useState(null);
@@ -40,8 +42,11 @@ export default function StewardshipPage() {
   }
 
   useEffect(() => {
+    if (!isReady || !isAuthenticated) {
+      return;
+    }
     loadRows();
-  }, []);
+  }, [isReady, isAuthenticated]);
 
   useEffect(() => {
     if (!message && !errorMessage) {
@@ -109,7 +114,14 @@ export default function StewardshipPage() {
             <section>
               <h2 className="text-lg font-semibold text-zinc-900">Human-in-the-loop Queue</h2>
               <p className="mt-1 text-sm text-zinc-600">
-                Review moderate-confidence records and decide whether to approve or reject.
+                When the <strong>pipeline</strong> processes quarantine records, items with{" "}
+                <strong>medium match confidence</strong> (needs a human decision) are placed here.
+                You <strong>approve</strong> to publish them to master data, or <strong>reject</strong> to
+                decline.
+              </p>
+              <p className="mt-2 text-xs text-zinc-500">
+                If the queue is empty, run the pipeline from the Dashboard (admin) after you have
+                quarantine rows—only some records become stewardship tasks.
               </p>
             </section>
 
@@ -191,8 +203,12 @@ export default function StewardshipPage() {
                     ))}
                     {rows.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-6 text-center text-zinc-500">
-                          No stewardship records available.
+                        <td colSpan={6} className="px-4 py-10 text-center text-sm text-zinc-600">
+                          <p className="font-medium text-zinc-800">Queue is empty</p>
+                          <p className="mt-2 max-w-lg mx-auto text-zinc-500">
+                            Nothing needs human review right now. After an admin runs the pipeline,
+                            records with moderate match confidence may appear here for approve/reject.
+                          </p>
                         </td>
                       </tr>
                     ) : null}
