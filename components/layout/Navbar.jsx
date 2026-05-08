@@ -16,8 +16,8 @@ export default function Navbar({ title = "Dashboard" }) {
   const roleLabel = isAdmin ? "Admin" : "User";
 
   return (
-    <header className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
-      <div>
+    <header className="flex flex-col gap-3 border-b border-zinc-200 bg-white px-6 py-4 md:flex-row md:items-center md:justify-between">
+      <div className="min-w-0 md:flex-1">
         <h1 className="text-xl font-semibold text-zinc-900">{title}</h1>
         {userEmail ? (
           <p className="mt-1 text-xs font-medium text-zinc-500">
@@ -30,9 +30,11 @@ export default function Navbar({ title = "Dashboard" }) {
           </p>
         ) : null}
       </div>
-      <Button type="button" variant="secondary" onClick={handleLogout}>
-        Logout
-      </Button>
+      <div className="flex w-full items-center gap-3 md:w-auto md:min-w-0 md:justify-end">
+        <Button type="button" variant="secondary" onClick={handleLogout} className="shrink-0">
+          Logout
+        </Button>
+      </div>
     </header>
   );
 }

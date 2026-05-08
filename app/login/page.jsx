@@ -44,7 +44,7 @@ function LoginPageContent() {
     try {
       setIsSubmitting(true);
       const response = await loginUser({ email: email.trim(), password });
-      login(response.access_token);
+      login(response.access_token, response.refresh_token || null);
       setIsSubmitting(false);
       setSuccessMessage("Signed in successfully. Redirecting...");
       const next = searchParams.get("next");
