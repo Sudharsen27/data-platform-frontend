@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar";
+import PageShell from "@/components/layout/PageShell";
 import { getSyncJobs, retrySyncJob, triggerSnowflakeSync } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import Button from "@/components/ui/Button";
@@ -119,14 +118,10 @@ export default function JobsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <>
       <Toast message={message} type="success" />
       <Toast message={errorMessage} type="error" />
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <Sidebar />
-        <div className="flex-1">
-          <Navbar title="Sync Jobs" />
-          <main className="space-y-6 p-6">
+      <PageShell title="Sync Jobs">
             <Breadcrumbs items={[{ label: "Home" }, { label: "Jobs", current: true }]} />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -185,9 +180,7 @@ export default function JobsPage() {
                 )}
               />
             )}
-          </main>
-        </div>
-      </div>
-    </div>
+      </PageShell>
+    </>
   );
 }

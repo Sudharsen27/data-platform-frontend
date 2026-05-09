@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar";
+import PageShell from "@/components/layout/PageShell";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Toast from "@/components/ui/Toast";
@@ -138,14 +137,10 @@ export default function FlowPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <>
       <Toast message={message} type="success" />
       <Toast message={errorMessage} type="error" />
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <Sidebar />
-        <div className="flex-1">
-          <Navbar title="Data Flow Orchestration" />
-          <main className="space-y-6 p-6">
+      <PageShell title="Data Flow Orchestration">
             <section className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-zinc-900">
@@ -204,9 +199,7 @@ export default function FlowPage() {
                 ))}
               </div>
             )}
-          </main>
-        </div>
-      </div>
-    </div>
+      </PageShell>
+    </>
   );
 }

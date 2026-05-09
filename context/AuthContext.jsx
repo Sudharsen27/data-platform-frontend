@@ -14,6 +14,8 @@ const ROLE_PERMISSIONS = {
   admin: [
     "dashboard:read",
     "lineage:read",
+    "catalog:read",
+    "catalog:write",
     "rules:read",
     "rules:write",
     "pipeline:run",
@@ -21,7 +23,14 @@ const ROLE_PERMISSIONS = {
     "audit:read",
     "stewardship:manage",
   ],
-  user: ["dashboard:read", "lineage:read", "rules:read", "audit:read"],
+  user: [
+    "dashboard:read",
+    "lineage:read",
+    "catalog:read",
+    "rules:read",
+    "audit:read",
+    "stewardship:manage",
+  ],
 };
 
 function decodeJwtPayload(token) {
@@ -79,11 +88,24 @@ export function AuthProvider({ children }) {
     if (!refreshToken) {
       return null;
     }
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
+    const ctrl = new AbortController();
+    const t = window.setTimeout(() => ctrl.abort(), 15000);
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+        signal: ctrl.signal,
+      });
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        throw new Error("Session refresh timed out. Check that the API is running.");
+      }
+      throw err;
+    } finally {
+      window.clearTimeout(t);
+    }
     if (!response.ok) {
       throw new Error("Session expired. Please login again.");
     }

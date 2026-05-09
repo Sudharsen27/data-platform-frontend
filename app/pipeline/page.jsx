@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar";
+import PageShell from "@/components/layout/PageShell";
 import { getHealthStatus, getPipelineRuns } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth";
 import Card from "@/components/ui/Card";
@@ -139,13 +138,9 @@ export default function PipelinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <>
       <Toast message={toastMessage} type={toastType} />
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <Sidebar />
-        <div className="flex-1">
-          <Navbar title="Pipeline Monitoring" />
-          <main className="space-y-6 p-6">
+      <PageShell title="Pipeline Monitoring">
             <Breadcrumbs items={[{ label: "Home" }, { label: "Pipeline", current: true }]} />
             <section>
               <h2 className="text-lg font-semibold text-zinc-900">Pipeline Runs</h2>
@@ -285,9 +280,7 @@ export default function PipelinePage() {
                 </table>
               </div>
             )}
-          </main>
-        </div>
-      </div>
-    </div>
+      </PageShell>
+    </>
   );
 }

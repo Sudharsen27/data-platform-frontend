@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar";
+import PageShell from "@/components/layout/PageShell";
 import {
   getDashboardOverview,
   getAiFailedJobsSummary,
@@ -90,7 +89,7 @@ function normalizeDashboardData(data) {
 export default function DashboardPage() {
   const router = useRouter();
   const { isCheckingAuth } = useRequireAuth();
-  const { isAdmin, isReady, isAuthenticated } = useAuth();
+  const { isAdmin, isReady, isAuthenticated, userName } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [syncJobs, setSyncJobs] = useState([]);
   const [lineageGraph, setLineageGraph] = useState({ nodes: [], edges: [] });
@@ -291,14 +290,38 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <>
       <Toast message={toastMessage} type={toastType} />
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <Sidebar />
-        <div className="flex-1">
-          <Navbar />
-          <main className="space-y-6 p-6">
-            <Breadcrumbs items={[{ label: "Home" }, { label: "Dashboard", current: true }]} />
+      <PageShell title="Dashboard">
+        <Breadcrumbs items={[{ label: "Home" }, { label: "Dashboard", current: true }]} />
+
+        {!isDashboardLoading && !dashboardError ? (
+          <section className="rounded-2xl border border-blue-100/80 bg-gradient-to-br from-blue-50/90 via-white to-zinc-50/50 p-5 shadow-sm sm:p-6">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-blue-700">Overview</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">
+              Welcome back{userName ? `, ${userName}` : ""}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
+              Track data quality, lineage, stewardship, and pipeline health from a single control center.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {[
+                { href: "/quarantine", label: "Quarantine" },
+                { href: "/catalog", label: "Catalog" },
+                { href: "/lineage", label: "Lineage" },
+                { href: "/stewardship", label: "Stewardship" },
+              ].map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="inline-flex items-center rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
             {isDashboardLoading ? (
               <Card>
                 <div className="flex items-center gap-2 text-sm text-zinc-600">
@@ -589,9 +612,7 @@ export default function DashboardPage() {
                 )}
               </Card>
             </section>
-          </main>
-        </div>
-      </div>
-    </div>
+      </PageShell>
+    </>
   );
 }

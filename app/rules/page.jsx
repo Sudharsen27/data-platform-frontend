@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar";
+import PageShell from "@/components/layout/PageShell";
 import RuleForm from "@/components/rules/RuleForm";
 import RuleTable from "@/components/rules/RuleTable";
 import { addRule, deleteRule, getRules, updateRule } from "@/lib/api";
@@ -123,14 +122,10 @@ export default function RulesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <>
       <Toast message={message} type="success" />
       <Toast message={errorMessage} type="error" />
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <Sidebar />
-        <div className="flex-1">
-          <Navbar title="Rules Engine" />
-          <main className="space-y-6 p-6">
+      <PageShell title="Rules Engine">
             <Breadcrumbs items={[{ label: "Home" }, { label: "Rules", current: true }]} />
             <section>
               <h2 className="text-lg font-semibold text-zinc-900">Data Rules</h2>
@@ -165,9 +160,7 @@ export default function RulesPage() {
                 )}
               </div>
             </section>
-          </main>
-        </div>
-      </div>
-    </div>
+      </PageShell>
+    </>
   );
 }

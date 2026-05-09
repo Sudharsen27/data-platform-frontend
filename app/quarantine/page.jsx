@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar";
+import PageShell from "@/components/layout/PageShell";
 import DataTable from "@/components/table/DataTable";
 import { exportQuarantineCsv, getQuarantinePage, getRules, updateQuarantine } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
@@ -152,14 +151,10 @@ export default function QuarantinePage() {
   });
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <>
       <Toast message={message} type="success" />
       <Toast message={errorMessage} type="error" />
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <Sidebar />
-        <div className="flex-1">
-          <Navbar title="Quarantine" />
-          <main className="space-y-6 p-6">
+      <PageShell title="Quarantine">
             <Breadcrumbs items={[{ label: "Home" }, { label: "Quarantine", current: true }]} />
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -238,9 +233,7 @@ export default function QuarantinePage() {
                 </div>
               </div>
             )}
-          </main>
-        </div>
-      </div>
-    </div>
+      </PageShell>
+    </>
   );
 }

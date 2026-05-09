@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Navbar from "@/components/layout/Navbar";
-import Sidebar from "@/components/layout/Sidebar";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import PageShell from "@/components/layout/PageShell";
 import Card from "@/components/ui/Card";
 import Toast from "@/components/ui/Toast";
 import { getLineageGraph } from "@/lib/api";
@@ -35,7 +36,8 @@ function criticalityStyle(criticality) {
   return "text-emerald-700 bg-emerald-50 border-emerald-200";
 }
 
-export default function LineagePage() {
+function LineagePageContent() {
+  const searchParams = useSearchParams();
   const { isCheckingAuth } = useRequireAuth();
   const { isReady, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +66,17 @@ export default function LineagePage() {
 
     loadGraph();
   }, [isReady, isAuthenticated]);
+
+  useEffect(() => {
+    const key = searchParams.get("node");
+    if (!key || nodes.length === 0) {
+      return;
+    }
+    const exists = nodes.some((n) => n.key === key);
+    if (exists) {
+      setSelectedNodeKey(key);
+    }
+  }, [searchParams, nodes]);
 
   const groupedNodes = useMemo(() => {
     const groups = {
@@ -137,13 +150,9 @@ export default function LineagePage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <>
       <Toast message={errorMessage} type="error" />
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <Sidebar />
-        <div className="flex-1">
-          <Navbar title="Data Lineage" />
-          <main className="space-y-6 p-6">
+      <PageShell title="Data Lineage">
             <Card
               title="Lineage Overview"
               subtitle="Track source-to-golden-to-consumption lineage with transformation metadata."
@@ -169,9 +178,32 @@ export default function LineagePage() {
               )}
             </Card>
 
+            <Card title="Layer legend" subtitle="Node colors match the graph and list below.">
+              <div className="flex flex-wrap gap-3 text-xs">
+                {[
+                  ["source", "Source systems"],
+                  ["staging", "Staging / cleansing"],
+                  ["golden", "Golden / MDM"],
+                  ["consumption", "Analytics & consumption"],
+                ].map(([layer, label]) => (
+                  <span
+                    key={layer}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 font-medium ${nodeStyle(layer)}`}
+                  >
+                    <span className="h-2 w-2 rounded-full bg-current opacity-70" />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </Card>
+
             <Card title="Lineage Nodes" subtitle="Datasets and systems participating in the flow.">
-              <div className="mb-4 overflow-x-auto rounded-lg border border-zinc-200 bg-white p-2">
-                <svg viewBox="0 0 780 380" className="h-[280px] w-full min-w-[720px]">
+              <div className="mb-4 overflow-x-auto rounded-xl border border-zinc-200 bg-gradient-to-b from-zinc-50/50 to-white p-2 shadow-inner">
+                <svg
+                  viewBox="0 0 780 380"
+                  className="mx-auto h-[240px] w-full min-w-[640px] max-w-full sm:h-[280px] sm:min-w-[720px]"
+                  preserveAspectRatio="xMidYMid meet"
+                >
                   {edges.map((edge) => {
                     const from = graphView.map[edge.source_key];
                     const to = graphView.map[edge.target_key];
@@ -240,7 +272,9 @@ export default function LineagePage() {
                   })}
                 </svg>
                 <p className="mt-2 text-xs text-zinc-500">
-                  Click a node to highlight upstream/downstream impact.
+                  Click a node to highlight upstream/downstream impact. Open{" "}
+                  <code className="rounded bg-zinc-100 px-1">/lineage?node=your.node_key</code> to
+                  deep-link from the catalog.
                 </p>
               </div>
               {isLoading ? (
@@ -258,6 +292,14 @@ export default function LineagePage() {
                       </p>
                       <p className="mt-2 rounded border border-current/20 px-2 py-1 text-xs inline-block">
                         {node.key}
+                      </p>
+                      <p className="mt-2">
+                        <Link
+                          href={`/catalog?q=${encodeURIComponent(node.key)}`}
+                          className="text-xs font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-blue-900"
+                        >
+                          Search in catalog
+                        </Link>
                       </p>
                     </article>
                   ))}
@@ -299,9 +341,21 @@ export default function LineagePage() {
                 </div>
               )}
             </Card>
-          </main>
+      </PageShell>
+    </>
+  );
+}
+
+export default function LineagePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-600">
+          Loading lineage…
         </div>
-      </div>
-    </div>
+      }
+    >
+      <LineagePageContent />
+    </Suspense>
   );
 }
