@@ -13,9 +13,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/** Absolute origin for metadata (favicon, OG). Required on Vercel or icons fall back to the host default. */
+function siteUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (fromEnv) {
+    return fromEnv.replace(/\/$/, "");
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "http://localhost:3000";
+}
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
   title: "MDM Data Governance Platform",
   description: "Monitor data quality, pipeline runs, and governance workflows.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png?v=4", type: "image/png", sizes: "512x512" },
+      { url: "/icon.png?v=4", type: "image/png", sizes: "32x32" },
+    ],
+    apple: [{ url: "/icon.png?v=4", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
