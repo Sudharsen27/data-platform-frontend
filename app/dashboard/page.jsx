@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
@@ -19,6 +19,10 @@ import Toast from "@/components/ui/Toast";
 import Spinner from "@/components/ui/Spinner";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import DashboardTrendChart from "@/components/charts/DashboardTrendChart";
+import BarChart from "@/components/charts/BarChart";
+import AuditActivityFeed from "@/components/dashboard/AuditActivityFeed";
+import SlaWidgets from "@/components/dashboard/SlaWidgets";
 
 const DASHBOARD_CACHE_MS = 30_000;
 const DEFAULT_PIPELINE_STATUS = {
@@ -63,29 +67,6 @@ function writeCache(key, data) {
   }
 }
 
-function normalizeDashboardData(data) {
-  return {
-    successRate:
-      data?.success_rate ??
-      data?.successRate ??
-      data?.kpis?.success_rate ??
-      data?.kpis?.successRate ??
-      0,
-    failedRecords:
-      data?.failed_records ??
-      data?.failedRecords ??
-      data?.kpis?.failed_records ??
-      data?.kpis?.failedRecords ??
-      0,
-    activeJobs:
-      data?.active_jobs ??
-      data?.activeJobs ??
-      data?.kpis?.active_jobs ??
-      data?.kpis?.activeJobs ??
-      0,
-  };
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const { isCheckingAuth } = useRequireAuth();
@@ -102,6 +83,12 @@ export default function DashboardPage() {
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
   const [aiInsights, setAiInsights] = useState([]);
+  const [kpiCards, setKpiCards] = useState([]);
+  const [dashboardAlerts, setDashboardAlerts] = useState([]);
+  const [complianceStatus, setComplianceStatus] = useState(null);
+  const [dashboardTrends, setDashboardTrends] = useState(null);
+  const [auditActivity, setAuditActivity] = useState([]);
+  const [slaStatus, setSlaStatus] = useState(null);
   const [aiActionLoading, setAiActionLoading] = useState("");
 
   useEffect(() => {
@@ -112,7 +99,16 @@ export default function DashboardPage() {
     async function loadOverviewData() {
       const cached = readCache("dashboard:overview");
       if (cached) {
-        setDashboardData({ kpis: cached.kpis, last_sync_job: cached.last_sync_job });
+        setDashboardData({
+          kpi_summary: cached.kpi_summary ?? cached.kpis,
+          last_sync_job: cached.last_sync_job,
+        });
+        setKpiCards(cached.kpi_cards || []);
+        setDashboardAlerts(cached.alerts || []);
+        setComplianceStatus(cached.compliance || null);
+        setDashboardTrends(cached.trends || null);
+        setAuditActivity(cached.audit_activity || []);
+        setSlaStatus(cached.sla || null);
         setSyncJobs(cached.recent_jobs || []);
         setPipelineStatus(cached.pipeline_status || DEFAULT_PIPELINE_STATUS);
         setLineageGraph(cached.lineage || { nodes: [], edges: [] });
@@ -128,7 +124,16 @@ export default function DashboardPage() {
         }
         setDashboardError("");
         const overview = await getDashboardOverview();
-        setDashboardData({ kpis: overview.kpis, last_sync_job: overview.last_sync_job });
+        setDashboardData({
+          kpi_summary: overview.kpi_summary ?? overview.kpis,
+          last_sync_job: overview.last_sync_job,
+        });
+        setKpiCards(overview.kpi_cards || []);
+        setDashboardAlerts(overview.alerts || []);
+        setComplianceStatus(overview.compliance || null);
+        setDashboardTrends(overview.trends || null);
+        setAuditActivity(overview.audit_activity || []);
+        setSlaStatus(overview.sla || null);
         setSyncJobs(overview.recent_jobs || []);
         setPipelineStatus(overview.pipeline_status || DEFAULT_PIPELINE_STATUS);
         setLineageGraph(overview.lineage || { nodes: [], edges: [] });
@@ -166,7 +171,16 @@ export default function DashboardPage() {
       const overview = await getDashboardOverview();
       const latestStatus = overview.pipeline_status || DEFAULT_PIPELINE_STATUS;
       setPipelineStatus(latestStatus);
-      setDashboardData({ kpis: overview.kpis, last_sync_job: overview.last_sync_job });
+      setDashboardData({
+        kpi_summary: overview.kpi_summary ?? overview.kpis,
+        last_sync_job: overview.last_sync_job,
+      });
+      setKpiCards(overview.kpi_cards || []);
+      setDashboardAlerts(overview.alerts || []);
+      setComplianceStatus(overview.compliance || null);
+      setDashboardTrends(overview.trends || null);
+      setAuditActivity(overview.audit_activity || []);
+      setSlaStatus(overview.sla || null);
       setSyncJobs(overview.recent_jobs || []);
       setLineageGraph(overview.lineage || { nodes: [], edges: [] });
       setStewardshipRows(overview.stewardship || []);
@@ -189,41 +203,10 @@ export default function DashboardPage() {
     }
   }
 
-  const kpis = useMemo(() => {
-    const normalized = normalizeDashboardData(dashboardData);
-
-    return [
-      {
-        title: "Completeness",
-        value: `${Math.max(85, Number(normalized.successRate || 0))}%`,
-        delta: "+2.1%",
-      },
-      {
-        title: "Validity",
-        value: `${Math.max(80, 100 - Number(normalized.failedRecords || 0))}%`,
-        delta: "+1.4%",
-      },
-      {
-        title: "Uniqueness",
-        value: "99%",
-        delta: "+0.7%",
-      },
-      {
-        title: "Timeliness",
-        value: `${Math.max(85, 100 - Number(normalized.activeJobs || 0) * 2)}%`,
-        delta: "-1.6%",
-      },
-    ];
-  }, [dashboardData]);
-
   const lastSyncJob = dashboardData?.last_sync_job;
   const recentStewardship = stewardshipRows.slice(0, 5);
-  const recentAlerts = [
-    { name: "Schema drift detected", severity: "high" },
-    { name: "Data quality rule failed", severity: "medium" },
-    { name: "Broken pipeline dependency", severity: "high" },
-    { name: "Access anomaly detected", severity: "low" },
-  ];
+  const displayKpis = kpiCards.length > 0 ? kpiCards : [];
+  const displayAlerts = dashboardAlerts;
   const aiActions = [
     "Generate quality rules from profile",
     "Suggest stewardship owner assignments",
@@ -238,6 +221,16 @@ export default function DashboardPage() {
       return "bg-amber-50 text-amber-700";
     }
     return "bg-blue-50 text-blue-700";
+  }
+
+  function complianceStyle(status) {
+    if (status === "pass") {
+      return "text-emerald-600";
+    }
+    if (status === "fail") {
+      return "text-rose-600";
+    }
+    return "text-amber-600";
   }
 
   function handleAiAction(action) {
@@ -336,21 +329,54 @@ export default function DashboardPage() {
             ) : null}
 
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {kpis.map((kpi) => (
-                <Card key={kpi.title} className="p-4">
-                  <p className="text-sm font-medium text-zinc-500">{kpi.title}</p>
-                  <p className="mt-2 text-3xl font-semibold text-blue-700">{kpi.value}</p>
-                  <p className="mt-2 text-xs text-zinc-500">
-                    <span
-                      className={kpi.delta.startsWith("-") ? "text-rose-600" : "text-emerald-600"}
-                    >
-                      {kpi.delta}
-                    </span>{" "}
-                    vs last 7 days
-                  </p>
-                </Card>
-              ))}
+              {displayKpis.map((kpi) => {
+                const deltaClass =
+                  kpi.delta_positive === false
+                    ? "text-rose-600"
+                    : kpi.delta_positive === true
+                      ? "text-emerald-600"
+                      : "text-zinc-500";
+                const inner = (
+                  <>
+                    <p className="text-sm font-medium text-zinc-500">{kpi.title}</p>
+                    <p className="mt-2 text-3xl font-semibold text-blue-700">{kpi.value}</p>
+                    <p className="mt-2 text-xs text-zinc-500">
+                      <span className={deltaClass}>{kpi.delta}</span>{" "}
+                      {kpi.delta_label || "vs last 7 days"}
+                    </p>
+                  </>
+                );
+                return kpi.href ? (
+                  <Link key={kpi.key || kpi.title} href={kpi.href} className="block">
+                    <Card className="p-4 transition hover:border-blue-200 hover:shadow-md">{inner}</Card>
+                  </Link>
+                ) : (
+                  <Card key={kpi.key || kpi.title} className="p-4">
+                    {inner}
+                  </Card>
+                );
+              })}
             </section>
+
+            {!isDashboardLoading && !dashboardError && slaStatus ? (
+              <section>
+                <SlaWidgets sla={slaStatus} />
+              </section>
+            ) : null}
+
+            {!isDashboardLoading && !dashboardError ? (
+              <>
+                <section>
+                  <DashboardTrendChart data={dashboardTrends?.records_trend || []} />
+                </section>
+                <section>
+                  <BarChart data={dashboardTrends?.error_distribution || []} />
+                </section>
+                <section>
+                  <AuditActivityFeed items={auditActivity} />
+                </section>
+              </>
+            ) : null}
 
             <section className="grid gap-4 xl:grid-cols-3">
               <Card
@@ -473,40 +499,100 @@ export default function DashboardPage() {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-3">
-              <Card title="Compliance & Policy">
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-zinc-600">PII Access Control</span>
-                    <span className="text-emerald-600">Pass</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-zinc-600">Data Encryption</span>
-                    <span className="text-emerald-600">Pass</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-zinc-600">Data Retention</span>
-                    <span className="text-amber-600">Needs review</span>
-                  </div>
-                  <div className="mt-2">
-                    <p className="mb-1 text-xs text-zinc-500">Retention compliance</p>
-                    <div className="h-2 rounded-full bg-zinc-200">
-                      <div className="h-full w-[87%] rounded-full bg-teal-600" />
+              <Card
+                title="Compliance & Policy"
+                subtitle="Rules, catalog, audit, and stewardship"
+              >
+                {!complianceStatus ? (
+                  <p className="text-sm text-zinc-500">Loading compliance checks...</p>
+                ) : (
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <div className="mb-1 flex items-center justify-between text-xs text-zinc-500">
+                        <span>Overall compliance score</span>
+                        <span className="font-semibold text-zinc-700">
+                          {complianceStatus.overall_percent}%
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-zinc-200">
+                        <div
+                          className="h-full rounded-full bg-teal-600 transition-all"
+                          style={{ width: `${complianceStatus.overall_percent}%` }}
+                        />
+                      </div>
                     </div>
+                    {(complianceStatus.checks || []).map((check) => {
+                      const row = (
+                        <div className="flex items-start justify-between gap-2">
+                          <span>
+                            <span className="text-zinc-700">{check.label}</span>
+                            {check.detail ? (
+                              <span className="mt-0.5 block text-xs text-zinc-500">{check.detail}</span>
+                            ) : null}
+                          </span>
+                          <span
+                            className={`shrink-0 font-medium ${complianceStyle(check.status)}`}
+                          >
+                            {check.status_label}
+                          </span>
+                        </div>
+                      );
+                      return check.href ? (
+                        <Link
+                          key={check.key}
+                          href={check.href}
+                          className="block rounded border border-zinc-200 p-2 transition hover:border-blue-200 hover:bg-blue-50/50"
+                        >
+                          {row}
+                        </Link>
+                      ) : (
+                        <div key={check.key} className="rounded border border-zinc-200 p-2">
+                          {row}
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
+                )}
               </Card>
 
-              <Card title="Alerts / Incidents">
-                <ul className="space-y-2 text-sm">
-                  {recentAlerts.map((alert) => (
-                    <li key={alert.name} className="flex items-center justify-between rounded border border-zinc-200 p-2">
-                      <span className="text-zinc-700">{alert.name}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${severityStyle(alert.severity)}`}>
-                        {alert.severity}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+              <Card title="Alerts / Incidents" subtitle="From jobs, quarantine, and stewardship">
+                {displayAlerts.length === 0 ? (
+                  <p className="text-sm text-zinc-500">No active alerts. Data quality looks healthy.</p>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {displayAlerts.map((alert) => (
+                      <li key={alert.name}>
+                        {alert.href ? (
+                          <Link
+                            href={alert.href}
+                            className="flex items-start justify-between gap-2 rounded border border-zinc-200 p-2 transition hover:border-blue-200 hover:bg-blue-50/50"
+                          >
+                            <span>
+                              <span className="font-medium text-zinc-800">{alert.name}</span>
+                              {alert.detail ? (
+                                <span className="mt-0.5 block text-xs text-zinc-500">{alert.detail}</span>
+                              ) : null}
+                            </span>
+                            <span
+                              className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${severityStyle(alert.severity)}`}
+                            >
+                              {alert.severity}
+                            </span>
+                          </Link>
+                        ) : (
+                          <div className="flex items-start justify-between gap-2 rounded border border-zinc-200 p-2">
+                            <span className="text-zinc-700">{alert.name}</span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${severityStyle(alert.severity)}`}
+                            >
+                              {alert.severity}
+                            </span>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Card>
 
               <Card
