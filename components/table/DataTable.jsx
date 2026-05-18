@@ -6,6 +6,8 @@ export default function DataTable({
   rows,
   onFieldChange,
   onSave,
+  onExplain,
+  explainingId = null,
   savingId = null,
   readOnly = false,
 }) {
@@ -63,9 +65,25 @@ export default function DataTable({
                 </td>
                 <td className="px-4 py-3">
                   {row.error ? (
-                    <span className="inline-flex rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
-                      {row.error}
-                    </span>
+                    <div className="space-y-2">
+                      <span className="inline-flex rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
+                        {row.error}
+                      </span>
+                      {onExplain ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => onExplain(row)}
+                          disabled={explainingId === row.id}
+                        >
+                          {explainingId === row.id ? "Explaining..." : "AI explain"}
+                        </Button>
+                      ) : null}
+                      {row.aiExplanation ? (
+                        <p className="text-xs leading-relaxed text-zinc-600">{row.aiExplanation}</p>
+                      ) : null}
+                    </div>
                   ) : (
                     <span className="text-zinc-400">No errors</span>
                   )}

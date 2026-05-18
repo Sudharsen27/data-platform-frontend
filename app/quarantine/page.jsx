@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import PageShell from "@/components/layout/PageShell";
 import DataTable from "@/components/table/DataTable";
-import { exportQuarantineCsv, getQuarantinePage, getRules, updateQuarantine } from "@/lib/api";
+import {
+  explainQuarantineError,
+  exportQuarantineCsv,
+  getQuarantinePage,
+  getRules,
+  updateQuarantine,
+} from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 import { validateRowWithRules } from "@/utils/validation";
@@ -27,6 +33,7 @@ export default function QuarantinePage() {
   const [totalRows, setTotalRows] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [explainingId, setExplainingId] = useState(null);
 
   useEffect(() => {
     async function fetchQuarantineRows() {
@@ -117,6 +124,29 @@ export default function QuarantinePage() {
     }
   }
 
+  async function handleExplain(row) {
+    if (!row?.error) {
+      return;
+    }
+    try {
+      setExplainingId(row.id);
+      setErrorMessage("");
+      const result = await explainQuarantineError(row);
+      setRows((current) =>
+        current.map((item) =>
+          item.id === row.id
+            ? { ...item, aiExplanation: `${result.explanation} (${result.source})` }
+            : item
+        )
+      );
+      setMessage(`AI explanation ready for record ${row.id}.`);
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to explain error.");
+    } finally {
+      setExplainingId(null);
+    }
+  }
+
   async function handleExportCsv() {
     try {
       setIsExporting(true);
@@ -204,6 +234,8 @@ export default function QuarantinePage() {
                   rows={filteredRows}
                   onFieldChange={handleFieldChange}
                   onSave={handleSave}
+                  onExplain={handleExplain}
+                  explainingId={explainingId}
                   savingId={savingId}
                   readOnly={!isAdmin}
                 />

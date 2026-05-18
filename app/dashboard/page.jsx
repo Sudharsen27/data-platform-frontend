@@ -7,6 +7,7 @@ import PageShell from "@/components/layout/PageShell";
 import {
   getDashboardOverview,
   getAiFailedJobsSummary,
+  getAiStatus,
   runAiGenerateRules,
   runAiSuggestStewardshipOwners,
   runPipeline,
@@ -90,6 +91,7 @@ export default function DashboardPage() {
   const [auditActivity, setAuditActivity] = useState([]);
   const [slaStatus, setSlaStatus] = useState(null);
   const [aiActionLoading, setAiActionLoading] = useState("");
+  const [aiStatus, setAiStatus] = useState(null);
 
   useEffect(() => {
     if (!isReady || !isAuthenticated) {
@@ -148,6 +150,15 @@ export default function DashboardPage() {
       }
     }
     loadOverviewData();
+  }, [isReady, isAuthenticated]);
+
+  useEffect(() => {
+    if (!isReady || !isAuthenticated) {
+      return;
+    }
+    getAiStatus()
+      .then(setAiStatus)
+      .catch(() => setAiStatus(null));
   }, [isReady, isAuthenticated]);
 
   useEffect(() => {
@@ -408,6 +419,26 @@ export default function DashboardPage() {
                 </div>
               </Card>
               <Card title="AI Quick Actions" subtitle="Copilot suggestions">
+                {aiStatus ? (
+                  <p className="mb-3 text-xs text-zinc-500">
+                    Engine:{" "}
+                    <span
+                      className={
+                        aiStatus.available
+                          ? "font-semibold text-emerald-700"
+                          : "font-semibold text-amber-700"
+                      }
+                    >
+                      {!aiStatus.enabled
+                        ? "AI disabled in API (.env)"
+                        : aiStatus.provider === "ollama" && aiStatus.available
+                          ? `Ollama (${aiStatus.model})`
+                          : aiStatus.provider === "ollama"
+                            ? "Ollama offline — rule-based fallback"
+                            : `Rule-based (${aiStatus.model || "heuristics"})`}
+                    </span>
+                  </p>
+                ) : null}
                 <div className="space-y-2">
                   {aiActions.map((action) => (
                     <button
@@ -422,7 +453,9 @@ export default function DashboardPage() {
                   ))}
                 </div>
                 <p className="mt-4 text-xs text-zinc-500">
-                  AI features are advisory now; execution workflow can be enabled next.
+                  Works without Azure or a GPU. Optional upgrade: set{" "}
+                  <span className="font-mono">AI_PROVIDER=ollama</span> and run{" "}
+                  <span className="font-mono">ollama pull llama3.2:3b</span>.
                 </p>
               </Card>
             </section>
