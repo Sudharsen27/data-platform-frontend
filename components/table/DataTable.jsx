@@ -80,9 +80,6 @@ export default function DataTable({
                           {explainingId === row.id ? "Explaining..." : "AI explain"}
                         </Button>
                       ) : null}
-                      {row.aiExplanation ? (
-                        <p className="text-xs leading-relaxed text-zinc-600">{row.aiExplanation}</p>
-                      ) : null}
                     </div>
                   ) : (
                     <span className="text-zinc-400">No errors</span>

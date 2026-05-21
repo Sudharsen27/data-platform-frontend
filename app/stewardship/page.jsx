@@ -1,18 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import Toast from "@/components/ui/Toast";
+import Drawer, { DrawerFooterActions } from "@/components/ui/Drawer";
+import CompareThreeColumn from "@/components/governance/CompareThreeColumn";
+import Spinner from "@/components/ui/Spinner";
 import {
   approveStewardship,
   bulkApproveStewardship,
   bulkRejectStewardship,
   exportStewardshipCsv,
+  getMasterDataCompare,
   getStewardshipPage,
   rejectStewardship,
+  runAiSuggestStewardshipOwners,
 } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
@@ -37,6 +43,7 @@ function statusBadge(status) {
 }
 
 export default function StewardshipPage() {
+  const router = useRouter();
   const { isCheckingAuth } = useRequireAuth();
   const { isReady, isAuthenticated } = useAuth();
   const [rows, setRows] = useState([]);
@@ -51,7 +58,10 @@ export default function StewardshipPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkWorking, setBulkWorking] = useState(false);
   const [exportWorking, setExportWorking] = useState(false);
+  const [aiAssignWorking, setAiAssignWorking] = useState(false);
   const [confirmBulkRejectOpen, setConfirmBulkRejectOpen] = useState(false);
+  const [compareDrawer, setCompareDrawer] = useState(null);
+  const [compareLoadingId, setCompareLoadingId] = useState(null);
 
   const pendingOnPage = useMemo(
     () => rows.filter((r) => r.status === "pending").map((r) => r.id),
@@ -101,13 +111,33 @@ export default function StewardshipPage() {
     return () => clearTimeout(timer);
   }, [message, errorMessage]);
 
+  async function handleCompare(id) {
+    const row = rows.find((r) => r.id === id);
+    setCompareDrawer({ id, data: null, error: "", row });
+    try {
+      setCompareLoadingId(id);
+      setErrorMessage("");
+      const data = await getMasterDataCompare(id);
+      setCompareDrawer({ id, data, error: "", row });
+    } catch (error) {
+      setCompareDrawer({
+        id,
+        data: null,
+        error: error.message || "Failed to load comparison.",
+        row,
+      });
+    } finally {
+      setCompareLoadingId(null);
+    }
+  }
+
   async function handleApprove(id) {
     try {
       setActiveId(id);
-      await approveStewardship(id);
+      const result = await approveStewardship(id);
       setSelectedIds((s) => s.filter((x) => x !== id));
       await loadPage();
-      setMessage(`Record ${id} approved and moved to master data.`);
+      setMessage(result.message || `Record ${id} approved and moved to master data.`);
     } catch (error) {
       setErrorMessage(error.message || "Failed to approve record.");
     } finally {
@@ -126,6 +156,33 @@ export default function StewardshipPage() {
       setErrorMessage(error.message || "Failed to reject record.");
     } finally {
       setActiveId(null);
+    }
+  }
+
+  async function handleAssignOwners({ assignAllPending = false } = {}) {
+    const pendingSelected = selectedIds.filter((id) =>
+      rows.some((r) => r.id === id && r.status === "pending")
+    );
+    if (!assignAllPending && pendingSelected.length === 0) {
+      setErrorMessage("Select one or more pending rows, or use Assign all pending (AI).");
+      return;
+    }
+    try {
+      setAiAssignWorking(true);
+      setErrorMessage("");
+      const result = await runAiSuggestStewardshipOwners({
+        ids: assignAllPending ? [] : pendingSelected,
+        assignAllPending,
+      });
+      await loadPage();
+      const detail = (result.details || [])[0];
+      setMessage(
+        detail ? `${result.summary} ${detail}` : result.summary || "Owners assigned."
+      );
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to assign owners.");
+    } finally {
+      setAiAssignWorking(false);
     }
   }
 
@@ -236,6 +293,72 @@ export default function StewardshipPage() {
     <>
       <Toast message={message} type="success" />
       <Toast message={errorMessage} type="error" />
+      <Drawer
+        open={Boolean(compareDrawer)}
+        onClose={() => setCompareDrawer(null)}
+        title={
+          compareDrawer?.id ? `Compare #${compareDrawer.id}` : "Source vs golden"
+        }
+        subtitle="Quarantine → stewardship → master data"
+        width="max-w-2xl"
+        footer={
+          compareDrawer?.row?.status === "pending" ? (
+            <DrawerFooterActions>
+              <Button
+                size="sm"
+                onClick={() => {
+                  const id = compareDrawer.id;
+                  setCompareDrawer(null);
+                  handleApprove(id);
+                }}
+                disabled={activeId === compareDrawer?.id}
+              >
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const id = compareDrawer.id;
+                  setCompareDrawer(null);
+                  handleReject(id);
+                }}
+                disabled={activeId === compareDrawer?.id}
+              >
+                Reject
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setCompareDrawer(null)}>
+                Close
+              </Button>
+            </DrawerFooterActions>
+          ) : (
+            <DrawerFooterActions>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => router.push("/master-data")}
+              >
+                Master data
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setCompareDrawer(null)}>
+                Close
+              </Button>
+            </DrawerFooterActions>
+          )
+        }
+      >
+        {compareLoadingId === compareDrawer?.id ? (
+          <div className="flex items-center gap-2 text-sm text-zinc-600">
+            <Spinner />
+            Loading comparison…
+          </div>
+        ) : null}
+        {compareDrawer?.error ? (
+          <p className="text-sm text-rose-700">{compareDrawer.error}</p>
+        ) : null}
+        {compareDrawer?.data ? <CompareThreeColumn data={compareDrawer.data} /> : null}
+      </Drawer>
       <ConfirmModal
         open={confirmBulkRejectOpen}
         title="Reject selected records?"
@@ -256,9 +379,9 @@ export default function StewardshipPage() {
                 data, or <strong>reject</strong> to decline.
               </p>
               <p className="mt-2 text-xs text-zinc-500">
-                Large queues load in pages ({PAGE_SIZE} rows per page). Use checkboxes for bulk
-                actions (up to 500 per request). Export respects the current status filter (up to
-                50k rows per download).
+                Large queues load in pages ({PAGE_SIZE} rows per page). Select pending rows, then{" "}
+                <strong>Assign selected (AI)</strong>, or use <strong>Assign all pending (AI)</strong>{" "}
+                for up to 50 tasks. Bulk approve/reject uses the same checkboxes (up to 500).
               </p>
             </section>
 
@@ -297,6 +420,24 @@ export default function StewardshipPage() {
                     type="button"
                     size="sm"
                     variant="secondary"
+                    disabled={aiAssignWorking || selectedIds.length === 0}
+                    onClick={() => handleAssignOwners({ assignAllPending: false })}
+                  >
+                    {aiAssignWorking ? "Assigning…" : "Assign selected (AI)"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={aiAssignWorking || pendingTotal === 0}
+                    onClick={() => handleAssignOwners({ assignAllPending: true })}
+                  >
+                    Assign all pending (AI)
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
                     disabled={exportWorking || total === 0}
                     onClick={() => handleExportCsv()}
                   >
@@ -311,6 +452,15 @@ export default function StewardshipPage() {
                 <span className="text-zinc-600">
                   Selected: <strong className="text-zinc-900">{selectedIds.length}</strong>
                 </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={aiAssignWorking || selectedIds.length === 0}
+                  onClick={() => handleAssignOwners({ assignAllPending: false })}
+                >
+                  {aiAssignWorking ? "Assigning…" : "Assign selected (AI)"}
+                </Button>
                 <Button
                   type="button"
                   size="sm"
@@ -375,6 +525,9 @@ export default function StewardshipPage() {
                           Issue
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
+                          Owner
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
                           Status
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
@@ -399,6 +552,13 @@ export default function StewardshipPage() {
                           <td className="px-4 py-3 text-zinc-700">{row.name}</td>
                           <td className="px-4 py-3 text-zinc-700">{row.email || "-"}</td>
                           <td className="px-4 py-3 text-zinc-700">{row.issue || "-"}</td>
+                          <td className="px-4 py-3 text-zinc-700">
+                            {row.owner_email ? (
+                              <span className="font-mono text-xs text-blue-800">{row.owner_email}</span>
+                            ) : (
+                              <span className="text-zinc-400">Unassigned</span>
+                            )}
+                          </td>
                           <td className="px-4 py-3">
                             <span
                               className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusBadge(
@@ -409,7 +569,16 @@ export default function StewardshipPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={compareLoadingId === row.id}
+                                onClick={() => handleCompare(row.id)}
+                              >
+                                {compareLoadingId === row.id ? "…" : "Compare"}
+                              </Button>
                               <Button
                                 size="sm"
                                 onClick={() => handleApprove(row.id)}

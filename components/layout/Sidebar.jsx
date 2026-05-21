@@ -5,36 +5,86 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useMobileNav } from "@/context/MobileNavContext";
 
-const BASE_NAV = [
-  { name: "Dashboard", href: "/dashboard", short: "DB" },
-  { name: "Quarantine", href: "/quarantine", short: "Q" },
-  { name: "Catalog", href: "/catalog", short: "DC" },
-  { name: "Lineage", href: "/lineage", short: "LN" },
-  { name: "Jobs", href: "/jobs", short: "JB" },
-  { name: "Flow", href: "/flow", short: "FL" },
-  { name: "Stewardship", href: "/stewardship", short: "ST" },
-  { name: "Audit", href: "/audit", short: "AU" },
+const NAV_GROUPS = [
+  {
+    label: "Operate",
+    items: [
+      { name: "Dashboard", href: "/dashboard", short: "DB" },
+      { name: "Quarantine", href: "/quarantine", short: "Q" },
+      { name: "Stewardship", href: "/stewardship", short: "ST" },
+      { name: "Master Data", href: "/master-data", short: "MD" },
+    ],
+  },
+  {
+    label: "Govern",
+    items: [
+      { name: "Catalog", href: "/catalog", short: "DC" },
+      { name: "Lineage", href: "/lineage", short: "LN" },
+      { name: "Audit", href: "/audit", short: "AU" },
+      { name: "AI Activity", href: "/ai-activity", short: "AI" },
+    ],
+  },
+  {
+    label: "Platform",
+    items: [
+      { name: "Flow", href: "/flow", short: "FL" },
+      { name: "Jobs", href: "/jobs", short: "JB" },
+    ],
+  },
 ];
 
-const ADMIN_ONLY = [
+const ADMIN_ITEMS = [
   { name: "Rules", href: "/rules", short: "RL" },
   { name: "Pipeline", href: "/pipeline", short: "PL" },
   { name: "Users", href: "/users", short: "US" },
 ];
+
+function NavLink({ item, active, desktopCollapsed, onNavigate }) {
+  return (
+    <Link
+      href={item.href}
+      prefetch={false}
+      onClick={onNavigate}
+      title={desktopCollapsed ? item.name : undefined}
+      className={`flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium transition-colors ${
+        desktopCollapsed ? "md:justify-center md:px-2" : "px-3"
+      } ${
+        active
+          ? "bg-blue-50 text-blue-800 shadow-sm ring-1 ring-blue-100"
+          : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+      }`}
+    >
+      <span
+        className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${
+          active ? "bg-blue-100 text-blue-800" : "bg-zinc-100 text-zinc-600"
+        }`}
+      >
+        {item.short}
+      </span>
+      <span className={desktopCollapsed ? "md:sr-only" : ""}>{item.name}</span>
+    </Link>
+  );
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { isAdmin } = useAuth();
   const { open, close, desktopCollapsed } = useMobileNav();
 
-  const navItems = isAdmin ? [...BASE_NAV.slice(0, 2), ...ADMIN_ONLY, ...BASE_NAV.slice(2)] : BASE_NAV;
+  const groups = isAdmin
+    ? [
+        NAV_GROUPS[0],
+        { label: "Admin", items: ADMIN_ITEMS },
+        ...NAV_GROUPS.slice(1),
+      ]
+    : NAV_GROUPS;
 
   return (
     <>
       <button
         type="button"
         className={`fixed inset-0 z-40 bg-zinc-900/40 backdrop-blur-[1px] transition-opacity md:hidden ${
-          open ? "opacity-100 pointer-events-auto" : "pointer-events-none opacity-0"
+          open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={close}
         aria-hidden={!open}
@@ -73,36 +123,28 @@ export default function Sidebar() {
           </button>
         </div>
         <nav
-          className={`flex flex-col gap-1 px-3 py-3 md:flex-1 md:overflow-y-auto md:py-4 ${desktopCollapsed ? "md:px-2" : "md:px-4"}`}
+          className={`flex flex-col gap-4 px-3 py-3 md:flex-1 md:overflow-y-auto md:py-4 ${desktopCollapsed ? "md:px-2" : "md:px-4"}`}
         >
-          {navItems.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch={false}
-                onClick={close}
-                title={desktopCollapsed ? item.name : undefined}
-                className={`flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium transition-colors ${
-                  desktopCollapsed ? "md:justify-center md:px-2" : "px-3"
-                } ${
-                  active
-                    ? "bg-blue-50 text-blue-800 shadow-sm ring-1 ring-blue-100"
-                    : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
-                }`}
-              >
-                <span
-                  className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${
-                    active ? "bg-blue-100 text-blue-800" : "bg-zinc-100 text-zinc-600"
-                  }`}
-                >
-                  {item.short}
-                </span>
-                <span className={desktopCollapsed ? "md:sr-only" : ""}>{item.name}</span>
-              </Link>
-            );
-          })}
+          {groups.map((group) => (
+            <div key={group.label}>
+              {!desktopCollapsed ? (
+                <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  {group.label}
+                </p>
+              ) : null}
+              <div className="flex flex-col gap-0.5">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    active={pathname === item.href}
+                    desktopCollapsed={desktopCollapsed}
+                    onNavigate={close}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </nav>
       </aside>
     </>

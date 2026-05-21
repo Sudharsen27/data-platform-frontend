@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import PageShell from "@/components/layout/PageShell";
-import { getHealthStatus, getPipelineRuns } from "@/lib/api";
+import { getHealthStatus, getPipelineRuns, getPipelineStatus } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -57,6 +57,7 @@ export default function PipelinePage() {
   const [isHealthLoading, setIsHealthLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [toastType, setToastType] = useState("success");
+  const [pipelineStatus, setPipelineStatus] = useState(null);
 
   useEffect(() => {
     async function loadPipelineRuns() {
@@ -89,8 +90,18 @@ export default function PipelinePage() {
       }
     }
 
+    async function loadPipelineStatus() {
+      try {
+        const status = await getPipelineStatus();
+        setPipelineStatus(status);
+      } catch {
+        setPipelineStatus(null);
+      }
+    }
+
     loadPipelineRuns();
     loadHealthData();
+    loadPipelineStatus();
   }, []);
 
   useEffect(() => {
@@ -145,9 +156,48 @@ export default function PipelinePage() {
             <section>
               <h2 className="text-lg font-semibold text-zinc-900">Pipeline Runs</h2>
               <p className="mt-1 text-sm text-zinc-600">
-                Monitor run status and records processed for each pipeline execution.
+                Monitor run status and records processed for each pipeline execution. Run the
+                pipeline from the Dashboard to apply active rules to all quarantine rows.
               </p>
             </section>
+
+            {pipelineStatus?.rule_execution?.active_rules > 0 ? (
+              <Card
+                title="Last rule execution"
+                subtitle={`Pipeline status: ${pipelineStatus.status}`}
+              >
+                <div className="grid gap-2 text-sm text-zinc-700 sm:grid-cols-2 lg:grid-cols-4">
+                  <p>
+                    Active rules:{" "}
+                    <strong>{pipelineStatus.rule_execution.active_rules}</strong>
+                  </p>
+                  <p>
+                    Rows evaluated:{" "}
+                    <strong>{pipelineStatus.rule_execution.records_evaluated}</strong>
+                  </p>
+                  <p>
+                    With violations:{" "}
+                    <strong className="text-rose-700">
+                      {pipelineStatus.rule_execution.records_with_violations}
+                    </strong>
+                  </p>
+                  <p>
+                    Total violations:{" "}
+                    <strong>{pipelineStatus.rule_execution.total_violations}</strong>
+                  </p>
+                </div>
+                {(pipelineStatus.rule_execution.rule_hits || []).length > 0 ? (
+                  <ul className="mt-3 space-y-1 text-xs text-zinc-600">
+                    {pipelineStatus.rule_execution.rule_hits.slice(0, 5).map((hit) => (
+                      <li key={hit.rule_id}>
+                        <span className="font-medium text-zinc-800">{hit.field}</span>: {hit.rule}{" "}
+                        — <strong>{hit.hits}</strong> hit(s)
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </Card>
+            ) : null}
 
             {errorMessage ? (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">

@@ -21,6 +21,9 @@ export default function RuleTable({
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
               Status
             </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
+              Created by
+            </th>
             {readOnly ? null : (
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
                 Actions
@@ -38,6 +41,9 @@ export default function RuleTable({
               <td className="px-4 py-3 text-zinc-700">{ruleItem.rule}</td>
               <td className="px-4 py-3">
                 <StatusBadge status={ruleItem.status} />
+              </td>
+              <td className="px-4 py-3 text-xs text-zinc-600">
+                {ruleItem.created_by || "system"}
               </td>
               {readOnly ? null : (
                 <td className="px-4 py-3">

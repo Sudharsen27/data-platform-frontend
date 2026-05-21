@@ -24,6 +24,7 @@ import DashboardTrendChart from "@/components/charts/DashboardTrendChart";
 import BarChart from "@/components/charts/BarChart";
 import AuditActivityFeed from "@/components/dashboard/AuditActivityFeed";
 import SlaWidgets from "@/components/dashboard/SlaWidgets";
+import AttentionStrip from "@/components/dashboard/AttentionStrip";
 
 const DASHBOARD_CACHE_MS = 30_000;
 const DEFAULT_PIPELINE_STATUS = {
@@ -179,28 +180,44 @@ export default function DashboardPage() {
         last_message: "Pipeline execution in progress.",
       }));
       const result = await runPipeline();
-      const overview = await getDashboardOverview();
-      const latestStatus = overview.pipeline_status || DEFAULT_PIPELINE_STATUS;
-      setPipelineStatus(latestStatus);
-      setDashboardData({
-        kpi_summary: overview.kpi_summary ?? overview.kpis,
-        last_sync_job: overview.last_sync_job,
-      });
-      setKpiCards(overview.kpi_cards || []);
-      setDashboardAlerts(overview.alerts || []);
-      setComplianceStatus(overview.compliance || null);
-      setDashboardTrends(overview.trends || null);
-      setAuditActivity(overview.audit_activity || []);
-      setSlaStatus(overview.sla || null);
-      setSyncJobs(overview.recent_jobs || []);
-      setLineageGraph(overview.lineage || { nodes: [], edges: [] });
-      setStewardshipRows(overview.stewardship || []);
-      setAiInsights(overview.ai_insights || []);
-      writeCache("dashboard:overview", overview);
       setToastType("success");
+      const re = result.rule_execution;
+      const rulePart = re
+        ? ` Rules: ${re.records_with_violations} row(s) failed of ${re.records_evaluated} (${re.active_rules} active).`
+        : "";
       setToastMessage(
-        `Pipeline completed: ${result.merged} merged, ${result.review} review, ${result.new} new.`
+        `Pipeline completed: ${result.merged} merged, ${result.review} review, ${result.new} new.${rulePart}`
       );
+      setPipelineStatus((current) => ({
+        ...current,
+        status: "success",
+        last_message: result.message || "Pipeline completed successfully.",
+        progress_percent: 100,
+        processed_records: result.total_records ?? current.processed_records,
+      }));
+      getDashboardOverview()
+        .then((overview) => {
+          const latestStatus = overview.pipeline_status || DEFAULT_PIPELINE_STATUS;
+          setPipelineStatus(latestStatus);
+          setDashboardData({
+            kpi_summary: overview.kpi_summary ?? overview.kpis,
+            last_sync_job: overview.last_sync_job,
+          });
+          setKpiCards(overview.kpi_cards || []);
+          setDashboardAlerts(overview.alerts || []);
+          setComplianceStatus(overview.compliance || null);
+          setDashboardTrends(overview.trends || null);
+          setAuditActivity(overview.audit_activity || []);
+          setSlaStatus(overview.sla || null);
+          setSyncJobs(overview.recent_jobs || []);
+          setLineageGraph(overview.lineage || { nodes: [], edges: [] });
+          setStewardshipRows(overview.stewardship || []);
+          setAiInsights(overview.ai_insights || []);
+          writeCache("dashboard:overview", overview);
+        })
+        .catch(() => {
+          /* Pipeline succeeded; dashboard refresh is best-effort on large DBs */
+        });
     } catch (error) {
       setPipelineStatus((current) => ({
         ...current,
@@ -251,15 +268,23 @@ export default function DashboardPage() {
         if (action === "Generate quality rules from profile") {
           const result = await runAiGenerateRules();
           setToastType("success");
-          setToastMessage(result.summary || "AI quality rules generated.");
+          const detail = (result.details || [])[0];
+          setToastMessage(
+            detail ? `${result.summary} ${detail}` : result.summary || "AI quality rules generated."
+          );
           router.push("/rules");
           return;
         }
 
         if (action === "Suggest stewardship owner assignments") {
-          const result = await runAiSuggestStewardshipOwners();
+          const result = await runAiSuggestStewardshipOwners({ assignAllPending: true });
           setToastType("success");
-          setToastMessage(result.summary || "AI stewardship suggestions prepared.");
+          const detail = (result.details || [])[0];
+          setToastMessage(
+            detail
+              ? `${result.summary} ${detail}`
+              : result.summary || "Stewardship owners assigned."
+          );
           router.push("/stewardship");
           return;
         }
@@ -311,9 +336,9 @@ export default function DashboardPage() {
             <div className="mt-4 flex flex-wrap gap-2">
               {[
                 { href: "/quarantine", label: "Quarantine" },
-                { href: "/catalog", label: "Catalog" },
-                { href: "/lineage", label: "Lineage" },
                 { href: "/stewardship", label: "Stewardship" },
+                { href: "/flow", label: "Governance flow" },
+                { href: "/catalog", label: "Catalog" },
               ].map((l) => (
                 <Link
                   key={l.href}
@@ -326,6 +351,15 @@ export default function DashboardPage() {
             </div>
           </section>
         ) : null}
+
+        {!isDashboardLoading && !dashboardError ? (
+          <AttentionStrip
+            alerts={displayAlerts}
+            pipelineStatus={pipelineStatus}
+            slaStatus={slaStatus}
+          />
+        ) : null}
+
             {isDashboardLoading ? (
               <Card>
                 <div className="flex items-center gap-2 text-sm text-zinc-600">

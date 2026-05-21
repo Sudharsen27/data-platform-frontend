@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import PageShell from "@/components/layout/PageShell";
 import RuleForm from "@/components/rules/RuleForm";
 import RuleTable from "@/components/rules/RuleTable";
-import { addRule, deleteRule, getRules, updateRule } from "@/lib/api";
+import { addRule, deleteRule, getRules, updateRule, validateRulesSample } from "@/lib/api";
 import { useRequireAdmin } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
 import Toast from "@/components/ui/Toast";
 import Spinner from "@/components/ui/Spinner";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
@@ -22,6 +23,10 @@ export default function RulesPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [testName, setTestName] = useState("User 7");
+  const [testEmail, setTestEmail] = useState("user7");
+  const [testResult, setTestResult] = useState(null);
+  const [isTestingRules, setIsTestingRules] = useState(false);
 
   useEffect(() => {
     if (!isReady || !isAuthenticated || !isAdmin) {
@@ -130,9 +135,64 @@ export default function RulesPage() {
             <section>
               <h2 className="text-lg font-semibold text-zinc-900">Data Rules</h2>
               <p className="mt-1 text-sm text-zinc-600">
-                Manage validation rules for incoming records.
+                Active rules run automatically when you execute the pipeline on quarantine data.
               </p>
             </section>
+
+            <Card title="Test rules on a sample row" subtitle="Preview violations before running the full pipeline">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="text-sm text-zinc-700">
+                  Name
+                  <input
+                    className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                    value={testName}
+                    onChange={(e) => setTestName(e.target.value)}
+                  />
+                </label>
+                <label className="text-sm text-zinc-700">
+                  Email
+                  <input
+                    className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                  />
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isTestingRules}
+                  onClick={async () => {
+                    try {
+                      setIsTestingRules(true);
+                      setErrorMessage("");
+                      const result = await validateRulesSample({
+                        name: testName,
+                        email: testEmail,
+                      });
+                      setTestResult(result);
+                    } catch (error) {
+                      setErrorMessage(error.message || "Validation failed.");
+                    } finally {
+                      setIsTestingRules(false);
+                    }
+                  }}
+                >
+                  {isTestingRules ? "Testing…" : "Run validation"}
+                </Button>
+                {testResult ? (
+                  <span className="text-xs text-zinc-600">
+                    {testResult.active_rules} active rule(s) —{" "}
+                    {testResult.error ? (
+                      <span className="font-medium text-rose-700">{testResult.error}</span>
+                    ) : (
+                      <span className="font-medium text-emerald-700">Pass</span>
+                    )}
+                  </span>
+                ) : null}
+              </div>
+            </Card>
 
             <section className="grid gap-6 xl:grid-cols-[380px_1fr]">
               <RuleForm

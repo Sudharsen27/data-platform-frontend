@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
 import DataTable from "@/components/table/DataTable";
 import {
@@ -18,8 +19,10 @@ import Toast from "@/components/ui/Toast";
 import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import Drawer, { DrawerFooterActions } from "@/components/ui/Drawer";
 
 export default function QuarantinePage() {
+  const router = useRouter();
   const { isCheckingAuth } = useRequireAuth();
   const { isAdmin } = useAuth();
   const [rows, setRows] = useState([]);
@@ -34,6 +37,7 @@ export default function QuarantinePage() {
   const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [explainingId, setExplainingId] = useState(null);
+  const [explainDrawer, setExplainDrawer] = useState(null);
 
   useEffect(() => {
     async function fetchQuarantineRows() {
@@ -128,20 +132,18 @@ export default function QuarantinePage() {
     if (!row?.error) {
       return;
     }
+    setExplainDrawer({ row, result: null, error: "" });
     try {
       setExplainingId(row.id);
       setErrorMessage("");
       const result = await explainQuarantineError(row);
-      setRows((current) =>
-        current.map((item) =>
-          item.id === row.id
-            ? { ...item, aiExplanation: `${result.explanation} (${result.source})` }
-            : item
-        )
-      );
-      setMessage(`AI explanation ready for record ${row.id}.`);
+      setExplainDrawer({ row, result, error: "" });
     } catch (error) {
-      setErrorMessage(error.message || "Failed to explain error.");
+      setExplainDrawer({
+        row,
+        result: null,
+        error: error.message || "Failed to explain error.",
+      });
     } finally {
       setExplainingId(null);
     }
@@ -180,91 +182,145 @@ export default function QuarantinePage() {
     );
   });
 
+  const drawerRow = explainDrawer?.row;
+
   return (
     <>
       <Toast message={message} type="success" />
       <Toast message={errorMessage} type="error" />
-      <PageShell title="Quarantine">
-            <Breadcrumbs items={[{ label: "Home" }, { label: "Quarantine", current: true }]} />
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-zinc-900">
-                  Quarantined Records
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600">
-                  {isAdmin
-                    ? "Fix invalid records inline and save updates."
-                    : "View quarantined records. Only admins can edit and save changes."}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={handleExportCsv}
-                disabled={isExporting}
-              >
-                {isExporting ? "Exporting..." : "Export CSV"}
-              </Button>
+      <Drawer
+        open={Boolean(explainDrawer)}
+        onClose={() => setExplainDrawer(null)}
+        title={drawerRow ? `Record #${drawerRow.id}` : "Quarantine record"}
+        subtitle="AI-assisted error explanation"
+        width="max-w-lg"
+        footer={
+          <DrawerFooterActions>
+            <Button type="button" variant="secondary" onClick={() => router.push("/rules")}>
+              View rules
+            </Button>
+            <Button type="button" onClick={() => setExplainDrawer(null)}>
+              Close
+            </Button>
+          </DrawerFooterActions>
+        }
+      >
+        {drawerRow ? (
+          <div className="space-y-4 text-sm">
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+              <p className="text-xs font-semibold uppercase text-zinc-500">Record</p>
+              <p className="mt-1 font-medium text-zinc-900">
+                {drawerRow.name} · {drawerRow.email || "no email"}
+              </p>
             </div>
-            <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
-              <input
-                type="search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by id, name, email, or error"
-                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
+            <div>
+              <p className="text-xs font-semibold uppercase text-zinc-500">Error</p>
+              <p className="mt-1 rounded-md bg-rose-50 px-2 py-1.5 text-rose-800">{drawerRow.error}</p>
             </div>
-            {!isAdmin ? (
-              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Read-only mode for your account.
+            {explainingId === drawerRow.id ? (
+              <div className="flex items-center gap-2 text-zinc-600">
+                <Spinner />
+                Generating explanation…
               </div>
             ) : null}
-            {isLoading ? (
-              <Card>
-                <div className="flex items-center gap-2 text-sm text-zinc-600">
-                  <Spinner />
-                  Loading quarantine records...
-                </div>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                <DataTable
-                  rows={filteredRows}
-                  onFieldChange={handleFieldChange}
-                  onSave={handleSave}
-                  onExplain={handleExplain}
-                  explainingId={explainingId}
-                  savingId={savingId}
-                  readOnly={!isAdmin}
-                />
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
-                  <span>
-                    Showing {filteredRows.length === 0 ? 0 : offset + 1}-
-                    {Math.min(offset + filteredRows.length, totalRows)} of {totalRows}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={offset === 0 || isLoading}
-                      onClick={() => setOffset((current) => Math.max(0, current - limit))}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={offset + limit >= totalRows || isLoading}
-                      onClick={() => setOffset((current) => current + limit)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
+            {explainDrawer?.error ? (
+              <p className="text-rose-700">{explainDrawer.error}</p>
+            ) : null}
+            {explainDrawer?.result ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase text-zinc-500">Explanation</p>
+                <p className="leading-relaxed text-zinc-800">{explainDrawer.result.explanation}</p>
+                <p className="text-xs text-zinc-500">
+                  Source:{" "}
+                  <span className="font-medium text-zinc-700">{explainDrawer.result.source}</span>
+                </p>
               </div>
-            )}
+            ) : null}
+            {!explainDrawer?.result && !explainingId && !explainDrawer?.error ? (
+              <p className="text-zinc-500">No explanation yet.</p>
+            ) : null}
+          </div>
+        ) : null}
+      </Drawer>
+      <PageShell title="Quarantine">
+        <Breadcrumbs items={[{ label: "Home" }, { label: "Quarantine", current: true }]} />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">Quarantined Records</h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              {isAdmin
+                ? "Fix invalid records inline and save updates."
+                : "View quarantined records. Only admins can edit and save changes."}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleExportCsv}
+            disabled={isExporting}
+          >
+            {isExporting ? "Exporting..." : "Export CSV"}
+          </Button>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by id, name, email, or error"
+            className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+        {!isAdmin ? (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Read-only mode for your account.
+          </div>
+        ) : null}
+        {isLoading ? (
+          <Card>
+            <div className="flex items-center gap-2 text-sm text-zinc-600">
+              <Spinner />
+              Loading quarantine records...
+            </div>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            <DataTable
+              rows={filteredRows}
+              onFieldChange={handleFieldChange}
+              onSave={handleSave}
+              onExplain={handleExplain}
+              explainingId={explainingId}
+              savingId={savingId}
+              readOnly={!isAdmin}
+            />
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
+              <span>
+                Showing {filteredRows.length === 0 ? 0 : offset + 1}-
+                {Math.min(offset + filteredRows.length, totalRows)} of {totalRows}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={offset === 0 || isLoading}
+                  onClick={() => setOffset((current) => Math.max(0, current - limit))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={offset + limit >= totalRows || isLoading}
+                  onClick={() => setOffset((current) => current + limit)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </PageShell>
     </>
   );

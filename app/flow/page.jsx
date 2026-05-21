@@ -5,6 +5,8 @@ import PageShell from "@/components/layout/PageShell";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Toast from "@/components/ui/Toast";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import GovernanceFlowJourney from "@/components/governance/GovernanceFlowJourney";
 import { getPipelineStatus, runPipeline } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 
@@ -141,6 +143,10 @@ export default function FlowPage() {
       <Toast message={message} type="success" />
       <Toast message={errorMessage} type="error" />
       <PageShell title="Data Flow Orchestration">
+            <Breadcrumbs items={[{ label: "Home" }, { label: "Flow", current: true }]} />
+            <Card title="Governance journey" subtitle="How data moves through the platform">
+              <GovernanceFlowJourney />
+            </Card>
             <section className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-zinc-900">

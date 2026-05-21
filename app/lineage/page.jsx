@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import PageShell from "@/components/layout/PageShell";
 import Card from "@/components/ui/Card";
 import Toast from "@/components/ui/Toast";
-import { getLineageGraph } from "@/lib/api";
+import { getLineageGraph, getLineageImpact } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 
@@ -45,6 +45,9 @@ function LineagePageContent() {
   const [edges, setEdges] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedNodeKey, setSelectedNodeKey] = useState("");
+  const [impactField, setImpactField] = useState("email");
+  const [impactResult, setImpactResult] = useState(null);
+  const [impactLoading, setImpactLoading] = useState(false);
 
   useEffect(() => {
     if (!isReady || !isAuthenticated) {
@@ -128,18 +131,44 @@ function LineagePageContent() {
   }, [nodes]);
 
   const connectedKeys = useMemo(() => {
-    if (!selectedNodeKey) {
+    const focusKey = impactResult?.affected_node_keys?.length
+      ? impactResult.anchor_node_key || selectedNodeKey
+      : selectedNodeKey;
+    const highlightKeys = impactResult?.affected_node_keys?.length
+      ? new Set(impactResult.affected_node_keys)
+      : null;
+    if (highlightKeys) {
+      return highlightKeys;
+    }
+    if (!focusKey) {
       return new Set();
     }
-    const connected = new Set([selectedNodeKey]);
+    const connected = new Set([focusKey]);
     edges.forEach((edge) => {
-      if (edge.source_key === selectedNodeKey || edge.target_key === selectedNodeKey) {
+      if (edge.source_key === focusKey || edge.target_key === focusKey) {
         connected.add(edge.source_key);
         connected.add(edge.target_key);
       }
     });
     return connected;
-  }, [edges, selectedNodeKey]);
+  }, [edges, selectedNodeKey, impactResult]);
+
+  async function runImpactAnalysis({ nodeKey = "", field = "" } = {}) {
+    try {
+      setImpactLoading(true);
+      setErrorMessage("");
+      const payload = await getLineageImpact({ nodeKey, field });
+      setImpactResult(payload);
+      if (payload.anchor_node_key) {
+        setSelectedNodeKey(payload.anchor_node_key);
+      }
+    } catch (error) {
+      setImpactResult(null);
+      setErrorMessage(error.message || "Impact analysis failed.");
+    } finally {
+      setImpactLoading(false);
+    }
+  }
 
   if (isCheckingAuth) {
     return (
@@ -176,6 +205,74 @@ function LineagePageContent() {
                   ))}
                 </div>
               )}
+            </Card>
+
+            <Card
+              title="Impact analysis"
+              subtitle="Simulate a schema or field change and see downstream nodes and catalog assets."
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <label className="min-w-[200px] flex-1 text-sm">
+                  <span className="text-zinc-500">Field name</span>
+                  <input
+                    value={impactField}
+                    onChange={(e) => setImpactField(e.target.value)}
+                    placeholder="e.g. email"
+                    className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={impactLoading}
+                  onClick={() => runImpactAnalysis({ field: impactField })}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {impactLoading ? "Analyzing…" : "Analyze field impact"}
+                </button>
+                <button
+                  type="button"
+                  disabled={impactLoading || !selectedNodeKey}
+                  onClick={() => runImpactAnalysis({ nodeKey: selectedNodeKey })}
+                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-60"
+                >
+                  Analyze selected node
+                </button>
+                {impactResult ? (
+                  <button
+                    type="button"
+                    onClick={() => setImpactResult(null)}
+                    className="rounded-lg px-4 py-2 text-sm text-zinc-600 hover:text-zinc-900"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+              {impactResult ? (
+                <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-sm text-zinc-800">
+                  <p className="font-medium text-blue-900">{impactResult.summary}</p>
+                  <p className="mt-2 text-xs text-zinc-600">
+                    Affected nodes:{" "}
+                    <span className="font-mono">
+                      {(impactResult.affected_node_keys || []).join(", ") || "none"}
+                    </span>
+                  </p>
+                  {(impactResult.catalog_assets || []).length > 0 ? (
+                    <ul className="mt-2 list-inside list-disc text-xs text-zinc-700">
+                      {impactResult.catalog_assets.map((asset) => (
+                        <li key={asset.id}>
+                          <Link
+                            href={`/lineage?node=${encodeURIComponent(asset.lineage_node_key)}`}
+                            className="text-blue-700 underline"
+                          >
+                            {asset.name}
+                          </Link>{" "}
+                          ({asset.asset_key})
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
             </Card>
 
             <Card title="Layer legend" subtitle="Node colors match the graph and list below.">
