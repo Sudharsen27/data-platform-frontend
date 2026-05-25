@@ -46,17 +46,17 @@ function NavLink({ item, active, desktopCollapsed, onNavigate }) {
       prefetch={false}
       onClick={onNavigate}
       title={desktopCollapsed ? item.name : undefined}
-      className={`flex items-center gap-3 rounded-xl py-2.5 text-sm font-medium transition-colors ${
+      className={`flex items-center gap-3 rounded-lg py-2 text-sm font-medium transition-colors ${
         desktopCollapsed ? "md:justify-center md:px-2" : "px-3"
       } ${
         active
-          ? "bg-blue-50 text-blue-800 shadow-sm ring-1 ring-blue-100"
-          : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900"
+          ? "bg-[var(--nav-active-bg)] text-[var(--nav-active-text)] shadow-sm ring-1 ring-[var(--nav-active-ring)]"
+          : "text-[var(--text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--foreground)]"
       }`}
     >
       <span
         className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold ${
-          active ? "bg-blue-100 text-blue-800" : "bg-zinc-100 text-zinc-600"
+          active ? "bg-[var(--nav-active-ring)] text-[var(--nav-active-text)]" : "bg-[var(--nav-icon-bg)] text-[var(--nav-icon-text)]"
         }`}
       >
         {item.short}
@@ -83,7 +83,7 @@ export default function Sidebar() {
     <>
       <button
         type="button"
-        className={`fixed inset-0 z-40 bg-zinc-900/40 backdrop-blur-[1px] transition-opacity md:hidden ${
+        className={`fixed inset-0 z-40 bg-[var(--overlay)] backdrop-blur-[1px] transition-opacity md:hidden ${
           open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={close}
@@ -91,30 +91,32 @@ export default function Sidebar() {
         tabIndex={-1}
       />
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[min(100vw-3rem,18rem)] max-w-[18rem] flex-col border-r border-zinc-200 bg-white shadow-xl transition-[transform,width] duration-200 ease-out md:static md:z-auto md:h-auto md:min-h-screen md:max-w-none md:shrink-0 md:translate-x-0 md:self-stretch md:shadow-none ${
+        className={`mdm-sidebar fixed inset-y-0 left-0 z-50 flex h-full w-[min(100vw-3rem,18rem)] max-w-[18rem] flex-col shadow-xl transition-[transform,width] duration-200 ease-out md:static md:z-auto md:h-auto md:min-h-screen md:max-w-none md:shrink-0 md:translate-x-0 md:self-stretch md:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         } ${desktopCollapsed ? "md:w-[4.5rem] md:min-w-[4.5rem]" : "md:w-72"}`}
       >
         <div
-          className={`flex shrink-0 items-start justify-between gap-2 border-b border-zinc-100 px-4 py-4 md:border-0 md:pt-6 ${desktopCollapsed ? "md:justify-center md:px-2" : "md:px-5"}`}
+          className={`flex shrink-0 items-start justify-between gap-2 border-b border-[var(--border-subtle)] px-4 py-4 md:border-0 md:pt-6 ${desktopCollapsed ? "md:justify-center md:px-2" : "md:px-5"}`}
         >
           {desktopCollapsed ? (
-            <div className="hidden min-w-0 md:flex md:w-full md:justify-center" aria-hidden>
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-[11px] font-bold text-white">
-                M
-              </span>
+            <div className="hidden md:flex md:w-full md:justify-center" aria-hidden>
+              <span className="mdm-sidebar-logo">M</span>
             </div>
-          ) : null}
-          <div className={`min-w-0 ${desktopCollapsed ? "md:hidden" : ""}`}>
-            <p className="text-base font-semibold leading-snug text-zinc-900">MDM Governance</p>
-            <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-              Control Center
-            </p>
-          </div>
+          ) : (
+            <div className="mdm-sidebar-brand min-w-0">
+              <span className="mdm-sidebar-logo">M</span>
+              <div>
+                <p className="text-sm font-semibold leading-snug">MDM Governance</p>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                  Data platform
+                </p>
+              </div>
+            </div>
+          )}
           <button
             type="button"
             onClick={close}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 md:hidden"
+            className="mdm-icon-btn shrink-0 md:hidden"
             aria-label="Close menu"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
@@ -128,7 +130,7 @@ export default function Sidebar() {
           {groups.map((group) => (
             <div key={group.label}>
               {!desktopCollapsed ? (
-                <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">
                   {group.label}
                 </p>
               ) : null}

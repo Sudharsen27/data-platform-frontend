@@ -22,6 +22,20 @@ import {
 } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
+import StatusBadge from "@/components/ui/StatusBadge";
+import {
+  MDM_MUTED,
+  MDM_PAGE_DESC,
+  MDM_PAGE_TITLE,
+  MDM_TABLE,
+  MDM_TABLE_ACTIONS,
+  MDM_TABLE_HEAD,
+  MDM_TABLE_ROW,
+  MDM_TABLE_TD,
+  MDM_TABLE_TD_ACTION,
+  MDM_TABLE_TH,
+  MDM_TABLE_WRAP,
+} from "@/lib/themeClasses";
 
 const PAGE_SIZE = 50;
 
@@ -31,16 +45,6 @@ const STATUS_OPTIONS = [
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
 ];
-
-function statusBadge(status) {
-  if (status === "approved") {
-    return "bg-emerald-50 text-emerald-700";
-  }
-  if (status === "rejected") {
-    return "bg-rose-50 text-rose-700";
-  }
-  return "bg-amber-50 text-amber-700";
-}
 
 export default function StewardshipPage() {
   const router = useRouter();
@@ -279,7 +283,7 @@ export default function StewardshipPage() {
 
   if (isCheckingAuth) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-600">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--background)] text-sm text-[var(--text-muted)]">
         Checking authentication...
       </div>
     );
@@ -349,13 +353,13 @@ export default function StewardshipPage() {
         }
       >
         {compareLoadingId === compareDrawer?.id ? (
-          <div className="flex items-center gap-2 text-sm text-zinc-600">
+          <div className={`flex items-center gap-2 text-sm ${MDM_MUTED}`}>
             <Spinner />
             Loading comparison…
           </div>
         ) : null}
         {compareDrawer?.error ? (
-          <p className="text-sm text-rose-700">{compareDrawer.error}</p>
+          <p className="text-sm text-rose-700 dark:text-rose-300">{compareDrawer.error}</p>
         ) : null}
         {compareDrawer?.data ? <CompareThreeColumn data={compareDrawer.data} /> : null}
       </Drawer>
@@ -372,13 +376,13 @@ export default function StewardshipPage() {
       />
       <PageShell title="Stewardship Queue">
             <section>
-              <h2 className="text-lg font-semibold text-zinc-900">Human-in-the-loop Queue</h2>
-              <p className="mt-1 text-sm text-zinc-600">
+              <h2 className={MDM_PAGE_TITLE}>Human-in-the-loop Queue</h2>
+              <p className={`mt-1 ${MDM_PAGE_DESC}`}>
                 When the <strong>pipeline</strong> processes quarantine records, items that need a
                 human decision are placed here. You <strong>approve</strong> to publish them to master
                 data, or <strong>reject</strong> to decline.
               </p>
-              <p className="mt-2 text-xs text-zinc-500">
+              <p className={`mt-2 text-xs ${MDM_MUTED}`}>
                 Large queues load in pages ({PAGE_SIZE} rows per page). Select pending rows, then{" "}
                 <strong>Assign selected (AI)</strong>, or use <strong>Assign all pending (AI)</strong>{" "}
                 for up to 50 tasks. Bulk approve/reject uses the same checkboxes (up to 500).
@@ -387,27 +391,27 @@ export default function StewardshipPage() {
 
             <Card>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-zinc-600">
-                  <span className="font-medium text-zinc-800">
+                <div className={`text-sm ${MDM_MUTED}`}>
+                  <span className="font-medium text-[var(--foreground)]">
                     {statusFilter === "all"
                       ? `Total in queue: ${total.toLocaleString()}`
                       : `Matching filter: ${total.toLocaleString()}`}
                   </span>
-                  <span className="mx-2 text-zinc-300">|</span>
+                  <span className="mx-2 opacity-40">|</span>
                   <span>
                     Pending (all pages):{" "}
-                    <span className="font-semibold text-amber-700">
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">
                       {pendingTotal.toLocaleString()}
                     </span>
                   </span>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                  <label className="flex items-center gap-2 text-sm text-zinc-700">
+                  <label className="flex items-center gap-2 text-sm text-[var(--foreground)]">
                     <span className="whitespace-nowrap">Show</span>
                     <select
                       value={statusFilter}
                       onChange={(e) => onFilterChange(e.target.value)}
-                      className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="mdm-input py-1.5 text-sm"
                     >
                       {STATUS_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -448,9 +452,9 @@ export default function StewardshipPage() {
             </Card>
 
             {!isLoading && rows.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm shadow-sm">
-                <span className="text-zinc-600">
-                  Selected: <strong className="text-zinc-900">{selectedIds.length}</strong>
+              <div className="mdm-toolbar flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
+                <span className={MDM_MUTED}>
+                  Selected: <strong className="text-[var(--foreground)]">{selectedIds.length}</strong>
                 </span>
                 <Button
                   type="button"
@@ -482,7 +486,7 @@ export default function StewardshipPage() {
             ) : null}
 
             {errorMessage && !isLoading ? (
-              <div className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 rounded-xl border border-rose-200/80 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200 sm:flex-row sm:items-center sm:justify-between">
                 <span className="min-w-0 flex-1">{errorMessage}</span>
                 <Button type="button" size="sm" variant="secondary" onClick={() => loadPage()}>
                   Retry
@@ -492,19 +496,19 @@ export default function StewardshipPage() {
 
             {isLoading ? (
               <Card>
-                <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
-                <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
+                <div className="h-6 w-52 animate-pulse rounded bg-[var(--color-surface-hover)]" />
+                <div className="mt-3 h-24 animate-pulse rounded bg-[var(--color-surface-hover)]" />
               </Card>
             ) : (
               <>
-                <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm">
-                  <table className="min-w-full text-sm">
-                    <thead className="sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50/95 backdrop-blur-sm">
+                <div className={MDM_TABLE_WRAP}>
+                  <table className={MDM_TABLE}>
+                    <thead className={`${MDM_TABLE_HEAD} sticky top-0 z-10`}>
                       <tr>
-                        <th className="w-10 px-2 py-3 text-left">
+                        <th className={`${MDM_TABLE_TH} w-10 px-2`}>
                           <input
                             type="checkbox"
-                            className="h-4 w-4 rounded border-zinc-300"
+                            className="h-4 w-4 rounded border-[var(--border-color)] accent-[var(--color-primary)]"
                             checked={allPendingOnPageSelected}
                             disabled={pendingOnPage.length === 0}
                             onChange={() => toggleSelectAllPendingOnPage()}
@@ -512,64 +516,50 @@ export default function StewardshipPage() {
                             aria-label="Select all pending on this page"
                           />
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
-                          ID
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
-                          Name
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
-                          Email
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
-                          Issue
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
-                          Owner
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-600">
-                          Actions
-                        </th>
+                        <th className={MDM_TABLE_TH}>ID</th>
+                        <th className={MDM_TABLE_TH}>Name</th>
+                        <th className={MDM_TABLE_TH}>Email</th>
+                        <th className={MDM_TABLE_TH}>Issue</th>
+                        <th className={MDM_TABLE_TH}>Owner</th>
+                        <th className={MDM_TABLE_TH}>Status</th>
+                        <th className={MDM_TABLE_TH}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((row) => (
-                        <tr key={row.id} className="border-b border-zinc-100 hover:bg-zinc-50/70">
-                          <td className="px-2 py-3 align-middle">
+                        <tr key={row.id} className={MDM_TABLE_ROW}>
+                          <td className={`${MDM_TABLE_TD} w-10 px-2 align-middle`}>
                             <input
                               type="checkbox"
-                              className="h-4 w-4 rounded border-zinc-300"
+                              className="h-4 w-4 rounded border-[var(--border-color)] accent-[var(--color-primary)]"
                               checked={selectedIds.includes(row.id)}
                               disabled={row.status !== "pending"}
                               onChange={() => toggleSelected(row.id)}
                               aria-label={`Select row ${row.id}`}
                             />
                           </td>
-                          <td className="px-4 py-3 font-medium text-zinc-800">#{row.id}</td>
-                          <td className="px-4 py-3 text-zinc-700">{row.name}</td>
-                          <td className="px-4 py-3 text-zinc-700">{row.email || "-"}</td>
-                          <td className="px-4 py-3 text-zinc-700">{row.issue || "-"}</td>
-                          <td className="px-4 py-3 text-zinc-700">
-                            {row.owner_email ? (
-                              <span className="font-mono text-xs text-blue-800">{row.owner_email}</span>
-                            ) : (
-                              <span className="text-zinc-400">Unassigned</span>
-                            )}
+                          <td className={`${MDM_TABLE_TD} font-medium tabular-nums align-middle`}>
+                            #{row.id}
                           </td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusBadge(
-                                row.status
-                              )}`}
-                            >
-                              {row.status}
+                          <td className={`${MDM_TABLE_TD} align-middle`}>{row.name}</td>
+                          <td className={`${MDM_TABLE_TD} align-middle`}>{row.email || "—"}</td>
+                          <td className={`${MDM_TABLE_TD} max-w-[14rem] align-middle`}>
+                            <span className="line-clamp-2" title={row.issue || undefined}>
+                              {row.issue || "—"}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-wrap gap-2">
+                          <td className={`${MDM_TABLE_TD} align-middle`}>
+                            {row.owner_email ? (
+                              <span className="mdm-stewardship-owner">{row.owner_email}</span>
+                            ) : (
+                              <span className={MDM_MUTED}>Unassigned</span>
+                            )}
+                          </td>
+                          <td className={`${MDM_TABLE_TD} align-middle`}>
+                            <StatusBadge status={row.status} />
+                          </td>
+                          <td className={MDM_TABLE_TD_ACTION}>
+                            <div className={MDM_TABLE_ACTIONS}>
                               <Button
                                 type="button"
                                 size="sm"
@@ -584,7 +574,7 @@ export default function StewardshipPage() {
                                 onClick={() => handleApprove(row.id)}
                                 disabled={activeId === row.id || row.status !== "pending"}
                               >
-                                {activeId === row.id ? "Working..." : "Approve"}
+                                {activeId === row.id ? "…" : "Approve"}
                               </Button>
                               <Button
                                 size="sm"
@@ -600,9 +590,9 @@ export default function StewardshipPage() {
                       ))}
                       {rows.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-4 py-10 text-center text-sm text-zinc-600">
-                            <p className="font-medium text-zinc-800">No rows for this filter</p>
-                            <p className="mt-2 max-w-lg mx-auto text-zinc-500">
+                          <td colSpan={8} className={`${MDM_TABLE_TD} py-10 text-center`}>
+                            <p className="font-medium text-[var(--foreground)]">No rows for this filter</p>
+                            <p className={`mt-2 mx-auto max-w-lg ${MDM_MUTED}`}>
                               Try &quot;All statuses&quot; or another filter, or run the pipeline if the
                               queue is new.
                             </p>
@@ -615,12 +605,12 @@ export default function StewardshipPage() {
 
                 {total > 0 ? (
                   <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-center">
-                    <p className="text-sm text-zinc-600">
+                    <p className={`text-sm ${MDM_MUTED}`}>
                       Showing{" "}
-                      <strong className="text-zinc-900">
+                      <strong className="text-[var(--foreground)]">
                         {rangeStart.toLocaleString()}–{rangeEnd.toLocaleString()}
                       </strong>{" "}
-                      of <strong className="text-zinc-900">{total.toLocaleString()}</strong>
+                      of <strong className="text-[var(--foreground)]">{total.toLocaleString()}</strong>
                     </p>
                     <div className="flex gap-2">
                       <Button

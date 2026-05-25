@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import PageShell from "@/components/layout/PageShell";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import Toast from "@/components/ui/Toast";
+import ToastStack from "@/components/ui/ToastStack";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import GovernanceFlowJourney from "@/components/governance/GovernanceFlowJourney";
+import PipelineTimeline from "@/components/governance/PipelineTimeline";
 import { getPipelineStatus, runPipeline } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
+import { useToast } from "@/lib/useToast";
+import { usePipelineProgressToast } from "@/lib/usePipelineProgressToast";
 
 const DEFAULT_STEPS = [
   { key: "ingest", label: "Ingest", status: "pending", count: 0 },
@@ -17,26 +20,6 @@ const DEFAULT_STEPS = [
   { key: "stewardship", label: "Review", status: "pending", count: 0 },
   { key: "golden", label: "Golden", status: "pending", count: 0 },
 ];
-
-function getStepStyle(status) {
-  if (status === "completed") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-800";
-  }
-  if (status === "running") {
-    return "border-blue-200 bg-blue-50 text-blue-800";
-  }
-  return "border-zinc-200 bg-white text-zinc-700";
-}
-
-function getDotStyle(status) {
-  if (status === "completed") {
-    return "bg-emerald-500";
-  }
-  if (status === "running") {
-    return "bg-blue-500";
-  }
-  return "bg-zinc-300";
-}
 
 export default function FlowPage() {
   const { isCheckingAuth } = useRequireAuth();
@@ -51,16 +34,26 @@ export default function FlowPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
-  const [message, setMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToast();
 
-  async function fetchStatus() {
-    const data = await getPipelineStatus();
+  const applyPipelineStatus = useCallback((data) => {
     setPipelineState((current) => ({
       ...current,
       ...data,
-      steps: data.steps?.length ? data.steps : DEFAULT_STEPS,
+      steps: data?.steps?.length ? data.steps : DEFAULT_STEPS,
     }));
+  }, []);
+
+  usePipelineProgressToast({
+    pushToast,
+    dismissToast,
+    enabled: true,
+    onStatus: applyPipelineStatus,
+  });
+
+  async function fetchStatus() {
+    const data = await getPipelineStatus();
+    applyPipelineStatus(data);
     return data;
   }
 
@@ -70,7 +63,7 @@ export default function FlowPage() {
         setIsLoading(true);
         await fetchStatus();
       } catch (error) {
-        setErrorMessage(error.message || "Failed to load pipeline flow status.");
+        pushToast(error.message || "Failed to load pipeline flow status.", { type: "error" });
       } finally {
         setIsLoading(false);
       }
@@ -79,56 +72,44 @@ export default function FlowPage() {
     loadStatus();
   }, []);
 
-  useEffect(() => {
-    if (pipelineState.status !== "running") {
-      return undefined;
-    }
-
-    const intervalId = setInterval(() => {
-      fetchStatus().catch(() => {
-        // Keep polling simple; UI already surfaces explicit run errors.
-      });
-    }, 2000);
-
-    return () => clearInterval(intervalId);
-  }, [pipelineState.status]);
-
-  useEffect(() => {
-    if (!message && !errorMessage) {
-      return;
-    }
-    const timer = setTimeout(() => {
-      setMessage("");
-      setErrorMessage("");
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [message, errorMessage]);
+  const steps = useMemo(
+    () => (pipelineState.steps?.length ? pipelineState.steps : DEFAULT_STEPS),
+    [pipelineState.steps]
+  );
 
   async function handleRunPipeline() {
     try {
       setIsRunning(true);
-      setErrorMessage("");
-      setMessage("");
+      pushToast("Starting governance pipeline…", {
+        type: "info",
+        id: "pipeline-run",
+        title: "Pipeline running",
+        duration: 0,
+      });
       await runPipeline();
-      const status = await fetchStatus();
-      setMessage(status.last_message || "Pipeline completed successfully.");
+      await fetchStatus();
     } catch (error) {
       const normalizedError = String(error.message || "").toLowerCase();
       if (normalizedError.includes("already running")) {
         await fetchStatus().catch(() => null);
-        setMessage("Pipeline is already running. Live status is now refreshing.");
+        pushToast("Pipeline is already running — live progress in the top-right toast.", {
+          type: "info",
+          id: "pipeline-run",
+          title: "Pipeline running",
+          duration: 0,
+        });
       } else {
-        setErrorMessage(error.message || "Failed to run full pipeline.");
+        pushToast(error.message || "Failed to run full pipeline.", {
+          type: "error",
+          id: "pipeline-run",
+          title: "Pipeline error",
+          duration: 8000,
+        });
       }
     } finally {
       setIsRunning(false);
     }
   }
-
-  const steps = useMemo(
-    () => (pipelineState.steps?.length ? pipelineState.steps : DEFAULT_STEPS),
-    [pipelineState.steps]
-  );
 
   if (isCheckingAuth) {
     return (
@@ -140,71 +121,55 @@ export default function FlowPage() {
 
   return (
     <>
-      <Toast message={message} type="success" />
-      <Toast message={errorMessage} type="error" />
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
       <PageShell title="Data Flow Orchestration">
             <Breadcrumbs items={[{ label: "Home" }, { label: "Flow", current: true }]} />
             <Card title="Governance journey" subtitle="How data moves through the platform">
               <GovernanceFlowJourney />
             </Card>
-            <section className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+            <section className="mdm-flow-banner">
               <div>
-                <h2 className="text-lg font-semibold text-zinc-900">
-                  End-to-End Data Flow
-                </h2>
-                <p className="mt-1 text-sm text-zinc-600">
+                <h2 className="mdm-page-title">End-to-End Data Flow</h2>
+                <p className="mdm-page-desc">
                   Ingest to Golden Record orchestration with stage-level status and counts.
                 </p>
               </div>
               <Button onClick={handleRunPipeline} disabled={isRunning || pipelineState.status === "running"}>
-                {isRunning || pipelineState.status === "running" ? "Running..." : "Run Full Pipeline"}
+                {isRunning || pipelineState.status === "running" ? "Running…" : "Run Full Pipeline"}
               </Button>
             </section>
 
-            <Card title="Pipeline Progress" subtitle={pipelineState.last_message || "Awaiting run"}>
-              <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+            <Card title="Pipeline progress" subtitle={pipelineState.last_message || "Awaiting run"}>
+              <div className="mb-4 h-2.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-hover)]">
                 <div
-                  className="h-full rounded-full bg-blue-600 transition-all"
+                  className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-500"
                   style={{ width: `${pipelineState.progress_percent || 0}%` }}
                 />
               </div>
-              <div className="flex flex-wrap gap-4 text-sm text-zinc-600">
-                <span>Status: <strong className="text-zinc-900">{pipelineState.status}</strong></span>
-                <span>Total: <strong className="text-zinc-900">{pipelineState.total_records || 0}</strong></span>
-                <span>Processed: <strong className="text-zinc-900">{pipelineState.processed_records || 0}</strong></span>
-                <span>Progress: <strong className="text-zinc-900">{pipelineState.progress_percent || 0}%</strong></span>
+              <div className="mdm-pipeline-summary">
+                <span>
+                  Status: <strong>{pipelineState.status}</strong>
+                </span>
+                <span>
+                  Total: <strong>{(pipelineState.total_records || 0).toLocaleString()}</strong>
+                </span>
+                <span>
+                  Processed: <strong>{(pipelineState.processed_records || 0).toLocaleString()}</strong>
+                </span>
+                <span>
+                  Progress: <strong>{pipelineState.progress_percent || 0}%</strong>
+                </span>
               </div>
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <div key={n} className="h-[4.5rem] animate-pulse rounded-[var(--radius-card)] bg-[var(--color-surface-hover)]" />
+                  ))}
+                </div>
+              ) : (
+                <PipelineTimeline steps={steps} />
+              )}
             </Card>
-
-            {isLoading ? (
-              <Card>
-                <div className="h-6 w-52 animate-pulse rounded bg-zinc-200" />
-                <div className="mt-3 h-24 animate-pulse rounded bg-zinc-100" />
-              </Card>
-            ) : (
-              <div className="grid gap-3">
-                {steps.map((step, index) => (
-                  <div key={step.key} className="relative">
-                    {index < steps.length - 1 ? (
-                      <span className="absolute left-5 top-10 h-10 w-px bg-zinc-200" />
-                    ) : null}
-                    <div className={`flex items-center justify-between rounded-xl border p-4 ${getStepStyle(step.status)}`}>
-                      <div className="flex items-center gap-3">
-                        <span className={`h-3 w-3 rounded-full ${getDotStyle(step.status)}`} />
-                        <div>
-                          <p className="text-sm font-semibold">{step.label}</p>
-                          <p className="text-xs uppercase tracking-wide opacity-80">{step.status}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs uppercase tracking-wide opacity-75">Records</p>
-                        <p className="text-lg font-bold">{step.count || 0}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
       </PageShell>
     </>
   );

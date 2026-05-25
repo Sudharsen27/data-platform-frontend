@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { MDM_INPUT_WIDE } from "@/lib/themeClasses";
 
 const emptyForm = {
   field: "",
@@ -44,7 +45,7 @@ export default function RuleForm({
     <Card title={editingRule ? "Edit Rule" : "Create Rule"}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-zinc-700">Field Name</label>
+          <label className="text-sm font-medium text-[var(--foreground)]">Field Name</label>
           <input
             type="text"
             value={formData.field}
@@ -52,12 +53,12 @@ export default function RuleForm({
               setFormData((current) => ({ ...current, field: event.target.value }))
             }
             placeholder="email"
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500"
+            className={MDM_INPUT_WIDE}
           />
         </div>
 
         <div className="space-y-1">
-          <label className="text-sm font-medium text-zinc-700">Rule</label>
+          <label className="text-sm font-medium text-[var(--foreground)]">Rule</label>
           <input
             type="text"
             value={formData.rule}
@@ -65,18 +66,18 @@ export default function RuleForm({
               setFormData((current) => ({ ...current, rule: event.target.value }))
             }
             placeholder="Email cannot be null"
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500"
+            className={MDM_INPUT_WIDE}
           />
         </div>
 
         <div className="space-y-1">
-          <label className="text-sm font-medium text-zinc-700">Status</label>
+          <label className="text-sm font-medium text-[var(--foreground)]">Status</label>
           <select
             value={formData.status}
             onChange={(event) =>
               setFormData((current) => ({ ...current, status: event.target.value }))
             }
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500"
+            className={MDM_INPUT_WIDE}
           >
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -85,11 +86,7 @@ export default function RuleForm({
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting
-              ? "Saving..."
-              : editingRule
-              ? "Update Rule"
-              : "Create Rule"}
+            {isSubmitting ? "Saving…" : editingRule ? "Update Rule" : "Create Rule"}
           </Button>
           {editingRule ? (
             <Button type="button" variant="secondary" onClick={onCancel}>

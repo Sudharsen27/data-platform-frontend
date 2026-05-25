@@ -20,6 +20,16 @@ import Button from "@/components/ui/Button";
 import Spinner from "@/components/ui/Spinner";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Drawer, { DrawerFooterActions } from "@/components/ui/Drawer";
+import {
+  MDM_ERROR_BADGE,
+  MDM_INFO_LABEL,
+  MDM_INFO_PANEL,
+  MDM_PAGE_DESC,
+  MDM_PAGE_TITLE,
+  MDM_PAGINATION,
+  MDM_SEARCH,
+  MDM_TOOLBAR,
+} from "@/lib/themeClasses";
 
 export default function QuarantinePage() {
   const router = useRouter();
@@ -207,18 +217,18 @@ export default function QuarantinePage() {
       >
         {drawerRow ? (
           <div className="space-y-4 text-sm">
-            <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-              <p className="text-xs font-semibold uppercase text-zinc-500">Record</p>
-              <p className="mt-1 font-medium text-zinc-900">
+            <div className={MDM_INFO_PANEL}>
+              <p className={MDM_INFO_LABEL}>Record</p>
+              <p className="mt-1 font-medium text-[var(--foreground)]">
                 {drawerRow.name} · {drawerRow.email || "no email"}
               </p>
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase text-zinc-500">Error</p>
-              <p className="mt-1 rounded-md bg-rose-50 px-2 py-1.5 text-rose-800">{drawerRow.error}</p>
+              <p className={MDM_INFO_LABEL}>Error</p>
+              <p className={`mt-1 ${MDM_ERROR_BADGE}`}>{drawerRow.error}</p>
             </div>
             {explainingId === drawerRow.id ? (
-              <div className="flex items-center gap-2 text-zinc-600">
+              <div className="flex items-center gap-2 text-[var(--text-muted)]">
                 <Spinner />
                 Generating explanation…
               </div>
@@ -228,16 +238,16 @@ export default function QuarantinePage() {
             ) : null}
             {explainDrawer?.result ? (
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase text-zinc-500">Explanation</p>
-                <p className="leading-relaxed text-zinc-800">{explainDrawer.result.explanation}</p>
-                <p className="text-xs text-zinc-500">
+                <p className={MDM_INFO_LABEL}>Explanation</p>
+                <p className="leading-relaxed text-[var(--foreground)]">{explainDrawer.result.explanation}</p>
+                <p className="text-xs text-[var(--text-muted)]">
                   Source:{" "}
-                  <span className="font-medium text-zinc-700">{explainDrawer.result.source}</span>
+                  <span className="font-medium text-[var(--foreground)]">{explainDrawer.result.source}</span>
                 </p>
               </div>
             ) : null}
             {!explainDrawer?.result && !explainingId && !explainDrawer?.error ? (
-              <p className="text-zinc-500">No explanation yet.</p>
+              <p className="text-[var(--text-muted)]">No explanation yet.</p>
             ) : null}
           </div>
         ) : null}
@@ -246,8 +256,8 @@ export default function QuarantinePage() {
         <Breadcrumbs items={[{ label: "Home" }, { label: "Quarantine", current: true }]} />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-900">Quarantined Records</h2>
-            <p className="mt-1 text-sm text-zinc-600">
+            <h2 className={MDM_PAGE_TITLE}>Quarantined Records</h2>
+            <p className={MDM_PAGE_DESC}>
               {isAdmin
                 ? "Fix invalid records inline and save updates."
                 : "View quarantined records. Only admins can edit and save changes."}
@@ -263,13 +273,13 @@ export default function QuarantinePage() {
             {isExporting ? "Exporting..." : "Export CSV"}
           </Button>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+        <div className={MDM_TOOLBAR}>
           <input
             type="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by id, name, email, or error"
-            className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={MDM_SEARCH}
           />
         </div>
         {!isAdmin ? (
@@ -279,7 +289,7 @@ export default function QuarantinePage() {
         ) : null}
         {isLoading ? (
           <Card>
-            <div className="flex items-center gap-2 text-sm text-zinc-600">
+            <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
               <Spinner />
               Loading quarantine records...
             </div>
@@ -295,7 +305,7 @@ export default function QuarantinePage() {
               savingId={savingId}
               readOnly={!isAdmin}
             />
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
+            <div className={MDM_PAGINATION}>
               <span>
                 Showing {filteredRows.length === 0 ? 0 : offset + 1}-
                 {Math.min(offset + filteredRows.length, totalRows)} of {totalRows}

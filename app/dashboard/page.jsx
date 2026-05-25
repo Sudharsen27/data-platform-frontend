@@ -325,12 +325,12 @@ export default function DashboardPage() {
         <Breadcrumbs items={[{ label: "Home" }, { label: "Dashboard", current: true }]} />
 
         {!isDashboardLoading && !dashboardError ? (
-          <section className="rounded-2xl border border-blue-100/80 bg-gradient-to-br from-blue-50/90 via-white to-zinc-50/50 p-5 shadow-sm sm:p-6">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-blue-700">Overview</p>
-            <h2 className="mt-1 text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">
+          <section className="mdm-hero">
+            <p className="mdm-hero-label">Overview</p>
+            <h2 className="mdm-hero-title">
               Welcome back{userName ? `, ${userName}` : ""}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-600">
+            <p className="mdm-hero-desc">
               Track data quality, lineage, stewardship, and pipeline health from a single control center.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -340,11 +340,7 @@ export default function DashboardPage() {
                 { href: "/flow", label: "Governance flow" },
                 { href: "/catalog", label: "Catalog" },
               ].map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className="inline-flex items-center rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800"
-                >
+                <Link key={l.href} href={l.href} className="mdm-chip-link">
                   {l.label}
                 </Link>
               ))}

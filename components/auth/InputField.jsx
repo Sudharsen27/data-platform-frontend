@@ -2,7 +2,7 @@ function EmailIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-4 w-4 text-slate-400"
+      className="h-4 w-4 text-[var(--text-subtle)]"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -18,7 +18,7 @@ function LockIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-4 w-4 text-slate-400"
+      className="h-4 w-4 text-[var(--text-subtle)]"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -34,7 +34,7 @@ function UserIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-4 w-4 text-slate-400"
+      className="h-4 w-4 text-[var(--text-subtle)]"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -50,7 +50,7 @@ function CompanyIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      className="h-4 w-4 text-slate-400"
+      className="h-4 w-4 text-[var(--text-subtle)]"
       fill="none"
       stroke="currentColor"
       strokeWidth="1.8"
@@ -78,14 +78,14 @@ export default function InputField({
 }) {
   return (
     <div className="space-y-2">
-      <label htmlFor={id} className="text-sm font-semibold text-slate-700">
+      <label htmlFor={id} className="text-sm font-semibold text-[var(--foreground)]">
         {label}
       </label>
       <div
-        className={`group flex items-center rounded-[var(--radius-control)] border bg-white/80 px-3 transition-all duration-200 focus-within:-translate-y-0.5 focus-within:shadow-[0_0_0_4px_rgba(147,197,253,0.25)] ${
+        className={`group flex items-center rounded-[var(--radius-control)] border bg-[var(--input-bg)] px-3 transition-all duration-200 focus-within:-translate-y-0.5 focus-within:shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-ring)_35%,transparent)] ${
           errorMessage
-            ? "border-red-300 focus-within:border-red-400"
-            : "border-slate-300/90 focus-within:border-[var(--color-primary)]"
+            ? "border-red-400 focus-within:border-red-400"
+            : "border-[var(--input-border)] focus-within:border-[var(--color-primary)]"
         }`}
       >
         <span className="mr-2 transition-transform duration-200 group-focus-within:scale-110 group-focus-within:text-[var(--color-primary)]">
@@ -108,13 +108,13 @@ export default function InputField({
           required={required}
           autoComplete={autoComplete}
           aria-invalid={Boolean(errorMessage)}
-          className="w-full bg-transparent py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400"
+          className="w-full bg-transparent py-2.5 text-sm text-[var(--input-text)] outline-none placeholder:text-[var(--text-subtle)]"
           {...props}
         />
         {rightSlot ? <div className="ml-2">{rightSlot}</div> : null}
       </div>
       {errorMessage ? (
-        <p className="text-xs font-medium text-red-600">{errorMessage}</p>
+        <p className="text-xs font-medium text-red-600 dark:text-red-300">{errorMessage}</p>
       ) : null}
     </div>
   );

@@ -9,37 +9,47 @@ import Toast from "@/components/ui/Toast";
 import { getLineageGraph, getLineageImpact } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import {
+  MDM_TABLE,
+  MDM_TABLE_HEAD,
+  MDM_TABLE_ROW,
+  MDM_TABLE_TD,
+  MDM_TABLE_TH,
+  MDM_TABLE_WRAP,
+} from "@/lib/themeClasses";
 
 function nodeStyle(layer) {
-  if (layer === "source") {
-    return "bg-indigo-50 border-indigo-200 text-indigo-800";
-  }
-  if (layer === "staging") {
-    return "bg-amber-50 border-amber-200 text-amber-800";
-  }
-  if (layer === "golden") {
-    return "bg-emerald-50 border-emerald-200 text-emerald-800";
-  }
-  if (layer === "consumption") {
-    return "bg-cyan-50 border-cyan-200 text-cyan-800";
-  }
-  return "bg-zinc-50 border-zinc-200 text-zinc-700";
+  if (layer === "source") return "mdm-layer-card mdm-layer--source";
+  if (layer === "staging") return "mdm-layer-card mdm-layer--staging";
+  if (layer === "golden") return "mdm-layer-card mdm-layer--golden";
+  if (layer === "consumption") return "mdm-layer-card mdm-layer--consumption";
+  return "mdm-layer-card mdm-layer--default";
 }
 
 function criticalityStyle(criticality) {
   if (criticality === "high") {
-    return "text-red-700 bg-red-50 border-red-200";
+    return "rounded-full border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-700 dark:text-rose-300";
   }
   if (criticality === "medium") {
-    return "text-amber-700 bg-amber-50 border-amber-200";
+    return "rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-300";
   }
-  return "text-emerald-700 bg-emerald-50 border-emerald-200";
+  return "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300";
 }
 
 function LineagePageContent() {
   const searchParams = useSearchParams();
   const { isCheckingAuth } = useRequireAuth();
   const { isReady, isAuthenticated } = useAuth();
+  const { isDark } = useTheme();
+  const nodeFillActive = isDark ? "#312e81" : "#e0e7ff";
+  const nodeFillIdle = isDark ? "#27272a" : "#fafafa";
+  const nodeStrokeActive = isDark ? "#818cf8" : "#4f46e5";
+  const nodeStrokeIdle = isDark ? "#52525b" : "#d4d4d8";
+  const edgeStrokeActive = isDark ? "#818cf8" : "#4f46e5";
+  const edgeStrokeIdle = isDark ? "#52525b" : "#d4d4d8";
+  const textPrimary = isDark ? "#fafafa" : "#18181b";
+  const textSecondary = isDark ? "#a1a1aa" : "#52525b";
   const [isLoading, setIsLoading] = useState(true);
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
@@ -248,9 +258,9 @@ function LineagePageContent() {
                 ) : null}
               </div>
               {impactResult ? (
-                <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-sm text-zinc-800">
-                  <p className="font-medium text-blue-900">{impactResult.summary}</p>
-                  <p className="mt-2 text-xs text-zinc-600">
+                <div className="mdm-info-panel mt-4 text-sm">
+                  <p className="font-medium text-[var(--foreground)]">{impactResult.summary}</p>
+                  <p className="mt-2 text-xs text-[var(--text-muted)]">
                     Affected nodes:{" "}
                     <span className="font-mono">
                       {(impactResult.affected_node_keys || []).join(", ") || "none"}
@@ -295,7 +305,7 @@ function LineagePageContent() {
             </Card>
 
             <Card title="Lineage Nodes" subtitle="Datasets and systems participating in the flow.">
-              <div className="mb-4 overflow-x-auto rounded-xl border border-zinc-200 bg-gradient-to-b from-zinc-50/50 to-white p-2 shadow-inner">
+              <div className="mdm-lineage-canvas mb-4">
                 <svg
                   viewBox="0 0 780 380"
                   className="mx-auto h-[240px] w-full min-w-[640px] max-w-full sm:h-[280px] sm:min-w-[720px]"
@@ -318,7 +328,7 @@ function LineagePageContent() {
                         y1={from.y + 20}
                         x2={to.x}
                         y2={to.y + 20}
-                        stroke={active ? "#2563eb" : "#cbd5e1"}
+                        stroke={active ? edgeStrokeActive : edgeStrokeIdle}
                         strokeWidth={active ? 2.5 : 1.5}
                         markerEnd="url(#arrow)"
                         opacity={active ? 1 : 0.45}
@@ -335,7 +345,7 @@ function LineagePageContent() {
                       markerHeight="5"
                       orient="auto-start-reverse"
                     >
-                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb" />
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill={edgeStrokeActive} />
                     </marker>
                   </defs>
                   {graphView.positioned.map((node) => {
@@ -355,23 +365,23 @@ function LineagePageContent() {
                           width="160"
                           height="42"
                           rx="10"
-                          fill={active ? "#dbeafe" : "#f8fafc"}
-                          stroke={active ? "#1d4ed8" : "#cbd5e1"}
+                          fill={active ? nodeFillActive : nodeFillIdle}
+                          stroke={active ? nodeStrokeActive : nodeStrokeIdle}
                         />
-                        <text x={node.x + 10} y={node.y + 18} fontSize="11" fill="#0f172a">
+                        <text x={node.x + 10} y={node.y + 18} fontSize="11" fill={textPrimary}>
                           {node.label}
                         </text>
-                        <text x={node.x + 10} y={node.y + 31} fontSize="9" fill="#475569">
+                        <text x={node.x + 10} y={node.y + 31} fontSize="9" fill={textSecondary}>
                           {node.system}
                         </text>
                       </g>
                     );
                   })}
                 </svg>
-                <p className="mt-2 text-xs text-zinc-500">
+                <p className="mt-2 text-xs text-[var(--text-muted)]">
                   Click a node to highlight upstream/downstream impact. Open{" "}
-                  <code className="rounded bg-zinc-100 px-1">/lineage?node=your.node_key</code> to
-                  deep-link from the catalog.
+                  <code className="mdm-code-inline">/lineage?node=your.node_key</code> to deep-link
+                  from the catalog.
                 </p>
               </div>
               {isLoading ? (
@@ -379,23 +389,18 @@ function LineagePageContent() {
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {nodes.map((node) => (
-                    <article
-                      key={node.key}
-                      className={`rounded-lg border p-3 ${nodeStyle(node.layer)}`}
-                    >
+                    <article key={node.key} className={nodeStyle(node.layer)}>
                       <p className="text-sm font-semibold">{node.label}</p>
-                      <p className="mt-1 text-xs opacity-80">
-                        {node.system} - {node.layer}
+                      <p className="mt-1 text-xs text-[var(--text-muted)]">
+                        {node.system} · {node.layer}
                       </p>
-                      <p className="mt-2 rounded border border-current/20 px-2 py-1 text-xs inline-block">
-                        {node.key}
-                      </p>
+                      <p className="mdm-code-inline mt-2 inline-block">{node.key}</p>
                       <p className="mt-2">
                         <Link
                           href={`/catalog?q=${encodeURIComponent(node.key)}`}
-                          className="text-xs font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-blue-900"
+                          className="text-xs font-semibold text-[var(--color-primary)] hover:underline"
                         >
-                          Search in catalog
+                          Search in catalog →
                         </Link>
                       </p>
                     </article>
@@ -408,23 +413,23 @@ function LineagePageContent() {
               {isLoading ? (
                 <div className="h-44 animate-pulse rounded-lg bg-zinc-100" />
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500">
+                <div className={MDM_TABLE_WRAP}>
+                  <table className={MDM_TABLE}>
+                    <thead className={MDM_TABLE_HEAD}>
                       <tr>
-                        <th className="px-3 py-2">From</th>
-                        <th className="px-3 py-2">To</th>
-                        <th className="px-3 py-2">Transformation</th>
-                        <th className="px-3 py-2">Criticality</th>
+                        <th className={MDM_TABLE_TH}>From</th>
+                        <th className={MDM_TABLE_TH}>To</th>
+                        <th className={MDM_TABLE_TH}>Transformation</th>
+                        <th className={MDM_TABLE_TH}>Criticality</th>
                       </tr>
                     </thead>
                     <tbody>
                       {edges.map((edge) => (
-                        <tr key={edge.id} className="border-b border-zinc-100">
-                          <td className="px-3 py-2 text-zinc-700">{edge.source_key}</td>
-                          <td className="px-3 py-2 text-zinc-700">{edge.target_key}</td>
-                          <td className="px-3 py-2 text-zinc-700">{edge.transformation || "-"}</td>
-                          <td className="px-3 py-2">
+                        <tr key={edge.id} className={MDM_TABLE_ROW}>
+                          <td className={MDM_TABLE_TD}>{edge.source_key}</td>
+                          <td className={MDM_TABLE_TD}>{edge.target_key}</td>
+                          <td className={MDM_TABLE_TD}>{edge.transformation || "—"}</td>
+                          <td className={MDM_TABLE_TD}>
                             <span
                               className={`rounded-full border px-2 py-0.5 text-xs font-medium ${criticalityStyle(edge.criticality)}`}
                             >

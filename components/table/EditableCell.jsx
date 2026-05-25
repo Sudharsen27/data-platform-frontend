@@ -1,3 +1,5 @@
+import { MDM_INPUT, MDM_INPUT_ERROR } from "@/lib/themeClasses";
+
 export default function EditableCell({
   value,
   onChange,
@@ -7,7 +9,7 @@ export default function EditableCell({
 }) {
   if (readOnly) {
     return (
-      <span className="block rounded-md border border-transparent bg-zinc-50 px-3 py-2 text-sm text-zinc-800">
+      <span className="mdm-input mdm-input--readonly block max-w-none">
         {value || "—"}
       </span>
     );
@@ -19,11 +21,7 @@ export default function EditableCell({
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
-      className={`w-full rounded-md border px-3 py-2 text-sm outline-none transition-colors ${
-        hasError
-          ? "border-red-300 bg-red-50 text-red-700 placeholder-red-400 focus:border-red-500"
-          : "border-zinc-300 bg-white text-zinc-900 focus:border-zinc-500"
-      }`}
+      className={hasError ? MDM_INPUT_ERROR : MDM_INPUT}
     />
   );
 }

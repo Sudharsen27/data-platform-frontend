@@ -2,12 +2,17 @@
 
 import { useEffect, useState } from "react";
 import PageShell from "@/components/layout/PageShell";
-import { getSyncJobs, retrySyncJob, triggerSnowflakeSync } from "@/lib/api";
+import { getHealthStatus, getSyncJobs, retrySyncJob, triggerSnowflakeSync } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { useRequireAuth } from "@/lib/auth";
+import JobSchedulerPanel from "@/components/jobs/JobSchedulerPanel";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import Toast from "@/components/ui/Toast";
+import ToastStack from "@/components/ui/ToastStack";
+import { useToast } from "@/lib/useToast";
+import { usePipelineProgressToast } from "@/lib/usePipelineProgressToast";
 import { Table } from "@/components/ui/Table";
+import { MDM_MUTED, MDM_TABLE_TD } from "@/lib/themeClasses";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import StatusBadge from "@/components/ui/StatusBadge";
 import Spinner from "@/components/ui/Spinner";
@@ -30,13 +35,23 @@ function formatDate(value) {
 
 export default function JobsPage() {
   const { isCheckingAuth } = useRequireAuth();
+  const { isAdmin } = useAuth();
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToast();
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
   const [retryingId, setRetryingId] = useState(null);
   const [isManualSyncRunning, setIsManualSyncRunning] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [snowflakeReady, setSnowflakeReady] = useState(true);
+
+  usePipelineProgressToast({ pushToast, dismissToast, enabled: true });
+
+  function notify(message, options = {}) {
+    if (!message) {
+      return;
+    }
+    pushToast(message, options);
+  }
 
   async function loadJobs() {
     try {
@@ -44,7 +59,7 @@ export default function JobsPage() {
       const data = await getSyncJobs();
       setJobs(data);
     } catch (error) {
-      setErrorMessage(error.message || "Failed to load jobs.");
+      notify(error.message || "Failed to load jobs.", { type: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -55,28 +70,32 @@ export default function JobsPage() {
   }, []);
 
   useEffect(() => {
-    if (!message && !errorMessage) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setMessage("");
-      setErrorMessage("");
-    }, 2500);
-
-    return () => clearTimeout(timer);
-  }, [message, errorMessage]);
+    getHealthStatus()
+      .then((health) => {
+        setSnowflakeReady(health.snowflake === "ok");
+      })
+      .catch(() => setSnowflakeReady(false));
+  }, []);
 
   async function handleManualSync() {
     try {
       setIsManualSyncRunning(true);
-      setErrorMessage("");
-      setMessage("");
+      notify("Starting Snowflake sync…", { type: "info", title: "Sync", duration: 0, id: "snowflake-sync" });
       await triggerSnowflakeSync();
-      setMessage("Manual sync completed successfully.");
+      notify("Manual sync completed successfully.", {
+        type: "success",
+        title: "Sync complete",
+        id: "snowflake-sync",
+        duration: 6000,
+      });
       await loadJobs();
     } catch (error) {
-      setErrorMessage(error.message || "Failed to run manual sync.");
+      notify(error.message || "Failed to run manual sync.", {
+        type: "error",
+        title: "Sync failed",
+        id: "snowflake-sync",
+        duration: 8000,
+      });
     } finally {
       setIsManualSyncRunning(false);
     }
@@ -85,13 +104,27 @@ export default function JobsPage() {
   async function handleRetry(jobId) {
     try {
       setRetryingId(jobId);
-      setErrorMessage("");
-      setMessage("");
+      notify(`Retrying sync job #${jobId}…`, {
+        type: "info",
+        title: "Sync",
+        duration: 0,
+        id: "snowflake-sync",
+      });
       await retrySyncJob(jobId);
-      setMessage(`Retried sync job #${jobId} successfully.`);
+      notify(`Sync job #${jobId} completed.`, {
+        type: "success",
+        title: "Sync complete",
+        id: "snowflake-sync",
+        duration: 6000,
+      });
       await loadJobs();
     } catch (error) {
-      setErrorMessage(error.message || "Failed to retry sync job.");
+      notify(error.message || "Failed to retry sync job.", {
+        type: "error",
+        title: "Sync failed",
+        id: "snowflake-sync",
+        duration: 8000,
+      });
     } finally {
       setRetryingId(null);
     }
@@ -119,10 +152,14 @@ export default function JobsPage() {
 
   return (
     <>
-      <Toast message={message} type="success" />
-      <Toast message={errorMessage} type="error" />
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
       <PageShell title="Sync Jobs">
             <Breadcrumbs items={[{ label: "Home" }, { label: "Jobs", current: true }]} />
+            <JobSchedulerPanel
+              isAdmin={isAdmin}
+              snowflakeReady={snowflakeReady}
+              onNotify={notify}
+            />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-zinc-900">Sync Job History</h2>
@@ -130,7 +167,7 @@ export default function JobsPage() {
                   Track Snowflake sync runs and retry failed jobs.
                 </p>
               </div>
-              <Button onClick={handleManualSync} disabled={isManualSyncRunning}>
+              <Button onClick={handleManualSync} disabled={isManualSyncRunning || !snowflakeReady}>
                 {isManualSyncRunning ? "Processing..." : "Run Manual Sync"}
               </Button>
             </div>
@@ -144,7 +181,16 @@ export default function JobsPage() {
               </Card>
             ) : (
               <Table
-                columns={["Job ID", "Status", "Start", "End", "Rows", "Triggered By", "Action"]}
+                columns={[
+                  "Job ID",
+                  "Status",
+                  "Error",
+                  "Start",
+                  "End",
+                  "Rows",
+                  "Triggered By",
+                  "Action",
+                ]}
                 data={filteredJobs}
                 emptyMessage="No sync jobs available."
                 searchValue={searchTerm}
@@ -152,28 +198,41 @@ export default function JobsPage() {
                 searchPlaceholder="Search by job id, status, or trigger user"
                 renderRow={(job) => (
                   <>
-                    <td className="px-4 py-3 font-medium text-zinc-800">#{job.id}</td>
-                    <td className="px-4 py-3">
+                    <td className={`${MDM_TABLE_TD} font-medium tabular-nums`}>#{job.id}</td>
+                    <td className={MDM_TABLE_TD}>
                       <StatusBadge status={job.status} />
                     </td>
-                    <td className="px-4 py-3 text-zinc-700">{formatDate(job.start_time)}</td>
-                    <td className="px-4 py-3 text-zinc-700">{formatDate(job.end_time)}</td>
-                    <td className="px-4 py-3 text-zinc-700">
+                    <td className={MDM_TABLE_TD}>
+                      {job.error_message ? (
+                        <span
+                          className="block max-w-[14rem] truncate text-xs text-red-600 dark:text-red-400"
+                          title={job.error_message}
+                        >
+                          {job.error_message}
+                        </span>
+                      ) : (
+                        <span className={MDM_MUTED}>—</span>
+                      )}
+                    </td>
+                    <td className={MDM_TABLE_TD}>{formatDate(job.start_time)}</td>
+                    <td className={MDM_TABLE_TD}>{formatDate(job.end_time)}</td>
+                    <td className={MDM_TABLE_TD}>
                       Q: {job.quarantine_rows_synced}, R: {job.rules_synced}
                     </td>
-                    <td className="px-4 py-3 text-zinc-700">{job.triggered_by}</td>
-                    <td className="px-4 py-3">
+                    <td className={MDM_TABLE_TD}>{job.triggered_by}</td>
+                    <td className={`${MDM_TABLE_TD} mdm-table-td--action`}>
                       {job.status === "failed" ? (
                         <Button
                           onClick={() => handleRetry(job.id)}
-                          disabled={retryingId === job.id}
+                          disabled={retryingId === job.id || !snowflakeReady}
                           variant="secondary"
                           size="sm"
+                          title={snowflakeReady ? "Run sync again" : "Snowflake sync unavailable"}
                         >
-                          {retryingId === job.id ? "Retrying..." : "Retry"}
+                          {retryingId === job.id ? "Retrying…" : "Retry"}
                         </Button>
                       ) : (
-                        <span className="text-zinc-400">-</span>
+                        <span className={MDM_MUTED}>—</span>
                       )}
                     </td>
                   </>

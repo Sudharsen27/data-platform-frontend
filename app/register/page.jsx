@@ -67,8 +67,8 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-background)] px-4 py-6 sm:px-6 lg:px-10">
-      <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl overflow-hidden rounded-[var(--radius-shell)] border border-slate-200/80 bg-white shadow-[var(--shadow-shell)] lg:grid-cols-2">
-        <aside className="relative hidden overflow-hidden bg-gradient-to-br from-[#1b4ed8] via-[#1e3a8a] to-[#0f766e] p-12 text-white lg:flex lg:flex-col lg:justify-center">
+      <div className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl overflow-hidden rounded-[var(--radius-shell)] border border-slate-200/80 bg-white shadow-[var(--shadow-shell)] dark:border-slate-700 dark:bg-[var(--color-surface)] lg:grid-cols-2">
+        <aside className="relative hidden overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-cyan-700 p-12 text-white lg:flex lg:flex-col lg:justify-center">
           <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-20 -left-16 h-72 w-72 rounded-full bg-cyan-200/15 blur-3xl" />
 
@@ -104,7 +104,7 @@ export default function RegisterPage() {
           </div>
         </aside>
 
-        <main className="relative flex items-center justify-center overflow-hidden bg-gradient-to-b from-white via-slate-50/80 to-slate-100/70 p-5 sm:p-8 lg:p-12">
+        <main className="relative flex items-center justify-center overflow-hidden bg-[var(--background)] p-5 sm:p-8 lg:p-12">
           <div className="pointer-events-none absolute left-1/2 top-0 h-48 w-48 -translate-x-1/2 rounded-full bg-blue-100/70 blur-3xl" />
           <div className="w-full max-w-md">
             <p className="mb-4 text-center text-xs font-medium uppercase tracking-wide text-slate-500 lg:hidden">

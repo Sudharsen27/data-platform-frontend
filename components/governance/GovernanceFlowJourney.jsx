@@ -3,98 +3,68 @@
 import Link from "next/link";
 
 const STEPS = [
-  {
-    key: "quarantine",
-    label: "Quarantine",
-    short: "Fix bad data",
-    href: "/quarantine",
-    color: "border-rose-200 bg-rose-50 text-rose-900",
-  },
-  {
-    key: "rules",
-    label: "Rules",
-    short: "DQ policies",
-    href: "/rules",
-    color: "border-violet-200 bg-violet-50 text-violet-900",
-  },
-  {
-    key: "stewardship",
-    label: "Stewardship",
-    short: "Human review",
-    href: "/stewardship",
-    color: "border-amber-200 bg-amber-50 text-amber-900",
-  },
-  {
-    key: "master",
-    label: "Master Data",
-    short: "Golden records",
-    href: "/master-data",
-    color: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  },
-  {
-    key: "catalog",
-    label: "Catalog",
-    short: "Business glossary",
-    href: "/catalog",
-    color: "border-blue-200 bg-blue-50 text-blue-900",
-  },
-  {
-    key: "lineage",
-    label: "Lineage",
-    short: "Impact analysis",
-    href: "/lineage",
-    color: "border-cyan-200 bg-cyan-50 text-cyan-900",
-  },
+  { key: "quarantine", label: "Quarantine", short: "Fix bad data", href: "/quarantine", tone: "rose" },
+  { key: "rules", label: "Rules", short: "DQ policies", href: "/rules", tone: "violet" },
+  { key: "stewardship", label: "Stewardship", short: "Human review", href: "/stewardship", tone: "amber" },
+  { key: "master", label: "Master Data", short: "Golden records", href: "/master-data", tone: "emerald" },
+  { key: "catalog", label: "Catalog", short: "Business glossary", href: "/catalog", tone: "blue" },
+  { key: "lineage", label: "Lineage", short: "Impact analysis", href: "/lineage", tone: "cyan" },
 ];
+
+function Chevron() {
+  return (
+    <svg
+      className="h-4 w-4"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
 
 export default function GovernanceFlowJourney() {
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-zinc-600">
-        Records move from exception handling to authoritative master data. Catalog and lineage
-        connect business terms to technical dependencies for change impact analysis.
-      </p>
-      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-stretch">
+    <div className="space-y-5">
+      <div className="max-w-2xl">
+        <p className="mdm-section-label">Enterprise lifecycle</p>
+        <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
+          A clear path from exception handling to trusted master data — designed for stewards,
+          compliance, and leadership review.
+        </p>
+      </div>
+
+      <div className="mdm-journey-track">
         {STEPS.map((step, index) => (
-          <div key={step.key} className="flex min-w-0 flex-1 flex-col gap-2 sm:min-w-[140px]">
+          <div key={step.key} className="mdm-journey-step-wrap">
             <Link
               href={step.href}
-              className={`flex flex-1 flex-col rounded-xl border p-4 transition hover:shadow-md ${step.color}`}
+              className={`mdm-journey-step mdm-journey-step--${step.tone} min-h-[7.5rem]`}
             >
-              <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
-                Step {index + 1}
-              </span>
-              <span className="mt-1 text-base font-semibold">{step.label}</span>
-              <span className="mt-1 text-xs opacity-85">{step.short}</span>
+              <span className="mdm-journey-badge">{index + 1}</span>
+              <span className="mdm-journey-title">{step.label}</span>
+              <span className="mdm-journey-desc">{step.short}</span>
             </Link>
             {index < STEPS.length - 1 ? (
-              <span
-                className="hidden text-center text-zinc-300 lg:block lg:rotate-0"
-                aria-hidden
-              >
-                →
+              <span className="mdm-journey-chevron" aria-hidden>
+                <Chevron />
               </span>
             ) : null}
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap gap-2 text-xs">
-        <Link
-          href="/flow"
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 font-medium text-zinc-700 hover:bg-zinc-50"
-        >
+
+      <div className="mdm-journey-footer">
+        <Link href="/flow" className="mdm-chip-link">
           Pipeline orchestration
         </Link>
-        <Link
-          href="/ai-activity"
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 font-medium text-zinc-700 hover:bg-zinc-50"
-        >
+        <Link href="/ai-activity" className="mdm-chip-link">
           AI activity log
         </Link>
-        <Link
-          href="/dashboard"
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 font-medium text-zinc-700 hover:bg-zinc-50"
-        >
+        <Link href="/dashboard" className="mdm-chip-link">
           Control center
         </Link>
       </div>

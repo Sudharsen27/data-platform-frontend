@@ -26,18 +26,18 @@ export default function ConfirmModal({
     >
       <button
         type="button"
-        className="absolute inset-0 bg-zinc-900/50 backdrop-blur-[1px]"
+        className="absolute inset-0 bg-[var(--overlay)] backdrop-blur-[1px]"
         onClick={onCancel}
         aria-label="Close dialog"
       />
       <div
-        className="relative z-10 w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-xl"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-[var(--border-color)] bg-[var(--color-surface)] p-5 shadow-xl"
         style={{ animation: "fadeIn 0.2s ease-out" }}
       >
-        <h2 id="confirm-modal-title" className="text-lg font-semibold text-zinc-900">
+        <h2 id="confirm-modal-title" className="text-lg font-semibold text-[var(--foreground)]">
           {title}
         </h2>
-        {message ? <p className="mt-2 text-sm text-zinc-600">{message}</p> : null}
+        {message ? <p className="mt-2 text-sm text-[var(--text-muted)]">{message}</p> : null}
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="secondary" onClick={onCancel} disabled={busy}>
             {cancelLabel}

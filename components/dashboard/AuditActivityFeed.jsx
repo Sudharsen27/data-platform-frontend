@@ -3,13 +3,37 @@
 import Link from "next/link";
 
 const CATEGORY_STYLES = {
-  data: { dot: "bg-blue-500", badge: "bg-blue-50 text-blue-700", label: "Data" },
-  pipeline: { dot: "bg-violet-500", badge: "bg-violet-50 text-violet-700", label: "Pipeline" },
-  stewardship: { dot: "bg-teal-500", badge: "bg-teal-50 text-teal-700", label: "Stewardship" },
-  rules: { dot: "bg-indigo-500", badge: "bg-indigo-50 text-indigo-700", label: "Rules" },
-  ai: { dot: "bg-fuchsia-500", badge: "bg-fuchsia-50 text-fuchsia-700", label: "AI" },
-  admin: { dot: "bg-amber-500", badge: "bg-amber-50 text-amber-800", label: "Admin" },
-  governance: { dot: "bg-zinc-500", badge: "bg-zinc-100 text-zinc-700", label: "Governance" },
+  data: { dot: "bg-blue-500", badge: "bg-blue-500/15 text-blue-700 dark:text-blue-300", label: "Data" },
+  pipeline: {
+    dot: "bg-violet-500",
+    badge: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+    label: "Pipeline",
+  },
+  stewardship: {
+    dot: "bg-teal-500",
+    badge: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
+    label: "Stewardship",
+  },
+  rules: {
+    dot: "bg-indigo-500",
+    badge: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
+    label: "Rules",
+  },
+  ai: {
+    dot: "bg-fuchsia-500",
+    badge: "bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300",
+    label: "AI",
+  },
+  admin: {
+    dot: "bg-amber-500",
+    badge: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+    label: "Admin",
+  },
+  governance: {
+    dot: "bg-slate-500",
+    badge: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+    label: "Governance",
+  },
 };
 
 function formatRelativeTime(value) {
@@ -38,22 +62,20 @@ export default function AuditActivityFeed({ items = [] }) {
   const feed = Array.isArray(items) ? items : [];
 
   return (
-    <section className="overflow-hidden rounded-[var(--radius-shell)] border border-zinc-200/80 bg-white shadow-[var(--shadow-card)]">
-      <header className="flex flex-col gap-3 border-b border-zinc-200/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <section className="mdm-surface-panel">
+      <header className="mdm-surface-panel-header flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-            Audit trail
-          </p>
-          <h3 className="mt-1 text-lg font-semibold tracking-tight text-zinc-900">
+          <p className="mdm-section-label">Audit trail</p>
+          <h3 className="mt-1 text-lg font-semibold tracking-tight text-[var(--foreground)]">
             Recent governance activity
           </h3>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
             Who did what — imports, pipeline runs, stewardship, and rule changes.
           </p>
         </div>
         <Link
           href="/audit"
-          className="inline-flex shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800"
+          className="inline-flex shrink-0 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--color-surface-hover)] px-3 py-2 text-xs font-semibold text-[var(--foreground)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
         >
           View full audit log
         </Link>
@@ -61,24 +83,24 @@ export default function AuditActivityFeed({ items = [] }) {
 
       {feed.length === 0 ? (
         <div className="px-6 py-12 text-center">
-          <p className="text-sm font-medium text-zinc-800">No audit events yet</p>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="text-sm font-medium text-[var(--foreground)]">No audit events yet</p>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
             Import quarantine data, run the pipeline, or change rules to populate this feed.
           </p>
         </div>
       ) : (
-        <ol className="relative divide-y divide-zinc-100">
+        <ol className="relative divide-y divide-[var(--border-subtle)]">
           {feed.map((item, index) => {
             const style = categoryStyle(item.category);
             const row = (
               <div className="flex gap-4 py-4">
                 <div className="relative flex w-3 shrink-0 justify-center pt-1.5">
                   <span
-                    className={`z-10 h-2.5 w-2.5 rounded-full ring-4 ring-white ${style.dot}`}
+                    className={`z-10 h-2.5 w-2.5 rounded-full ring-4 ring-[var(--color-surface)] ${style.dot}`}
                   />
                   {index < feed.length - 1 ? (
                     <span
-                      className="absolute top-4 h-[calc(100%+1rem)] w-px bg-zinc-200"
+                      className="absolute top-4 h-[calc(100%+1rem)] w-px bg-[var(--border-color)]"
                       aria-hidden
                     />
                   ) : null}
@@ -90,12 +112,14 @@ export default function AuditActivityFeed({ items = [] }) {
                     >
                       {style.label}
                     </span>
-                    <span className="font-mono text-[10px] text-zinc-400">{item.action}</span>
-                    <span className="text-xs text-zinc-400">{formatRelativeTime(item.timestamp)}</span>
+                    <span className="font-mono text-[10px] text-[var(--text-subtle)]">{item.action}</span>
+                    <span className="text-xs text-[var(--text-subtle)]">
+                      {formatRelativeTime(item.timestamp)}
+                    </span>
                   </div>
-                  <p className="mt-1.5 text-sm font-medium text-zinc-900">{item.summary}</p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    <span className="font-medium text-zinc-600">{item.user_id}</span>
+                  <p className="mt-1.5 text-sm font-medium text-[var(--foreground)]">{item.summary}</p>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">
+                    <span className="font-medium text-[var(--foreground)]">{item.user_id}</span>
                     {item.entity ? (
                       <>
                         {" "}
@@ -112,7 +136,7 @@ export default function AuditActivityFeed({ items = [] }) {
                 {item.href ? (
                   <Link
                     href={item.href}
-                    className="block px-5 transition hover:bg-blue-50/40 sm:px-6"
+                    className="block px-5 transition hover:bg-[var(--color-surface-hover)] sm:px-6"
                   >
                     {row}
                   </Link>
