@@ -13,6 +13,7 @@ const NAV_GROUPS = [
       { name: "Quarantine", href: "/quarantine", short: "Q" },
       { name: "Stewardship", href: "/stewardship", short: "ST" },
       { name: "Master Data", href: "/master-data", short: "MD" },
+      { name: "Duplicates", href: "/duplicates", short: "DP" },
     ],
   },
   {
@@ -28,6 +29,7 @@ const NAV_GROUPS = [
     label: "Platform",
     items: [
       { name: "Flow", href: "/flow", short: "FL" },
+      { name: "Upload", href: "/upload", short: "UP" },
       { name: "Jobs", href: "/jobs", short: "JB" },
     ],
   },
