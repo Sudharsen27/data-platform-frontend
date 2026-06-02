@@ -20,6 +20,9 @@ const ACTION_OPTIONS = [
   { value: "pipeline_run", label: "pipeline_run" },
   { value: "role_change", label: "role_change" },
   { value: "status_change", label: "status_change" },
+  { value: "annotation_create", label: "annotation_create" },
+  { value: "annotation_update", label: "annotation_update" },
+  { value: "annotation_status_change", label: "annotation_status_change" },
 ];
 
 function formatTime(value) {

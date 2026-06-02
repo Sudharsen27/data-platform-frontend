@@ -14,7 +14,9 @@ import {
   approveStewardship,
   bulkApproveStewardship,
   bulkRejectStewardship,
+  createAnnotation,
   exportStewardshipCsv,
+  getAnnotations,
   getMasterDataCompare,
   getStewardshipPage,
   rejectStewardship,
@@ -45,6 +47,12 @@ const STATUS_OPTIONS = [
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
 ];
+const ANNOTATION_STATUS_OPTIONS = [
+  { value: "needs_review", label: "Needs Review" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+  { value: "duplicate", label: "Duplicate" },
+];
 
 export default function StewardshipPage() {
   const router = useRouter();
@@ -66,6 +74,11 @@ export default function StewardshipPage() {
   const [confirmBulkRejectOpen, setConfirmBulkRejectOpen] = useState(false);
   const [compareDrawer, setCompareDrawer] = useState(null);
   const [compareLoadingId, setCompareLoadingId] = useState(null);
+  const [annotationDrawer, setAnnotationDrawer] = useState(null);
+  const [annotationLoading, setAnnotationLoading] = useState(false);
+  const [annotationSaving, setAnnotationSaving] = useState(false);
+  const [annotationComment, setAnnotationComment] = useState("");
+  const [annotationStatus, setAnnotationStatus] = useState("needs_review");
 
   const pendingOnPage = useMemo(
     () => rows.filter((r) => r.status === "pending").map((r) => r.id),
@@ -271,6 +284,64 @@ export default function StewardshipPage() {
     }
   }
 
+  async function handleOpenAnnotations(row) {
+    setAnnotationDrawer({ row, items: [], error: "" });
+    setAnnotationComment("");
+    setAnnotationStatus("needs_review");
+    try {
+      setAnnotationLoading(true);
+      const result = await getAnnotations({ recordId: row.id, status: "all", limit: 100 });
+      setAnnotationDrawer({
+        row,
+        items: Array.isArray(result.items) ? result.items : [],
+        error: "",
+      });
+    } catch (error) {
+      setAnnotationDrawer({
+        row,
+        items: [],
+        error: error.message || "Failed to load annotations.",
+      });
+    } finally {
+      setAnnotationLoading(false);
+    }
+  }
+
+  async function handleCreateAnnotation() {
+    if (!annotationDrawer?.row?.id) {
+      return;
+    }
+    if (!annotationComment.trim()) {
+      setErrorMessage("Annotation comment is required.");
+      return;
+    }
+    try {
+      setAnnotationSaving(true);
+      await createAnnotation({
+        record_id: annotationDrawer.row.id,
+        comment: annotationComment.trim(),
+        status: annotationStatus,
+      });
+      const refreshed = await getAnnotations({
+        recordId: annotationDrawer.row.id,
+        status: "all",
+        limit: 100,
+      });
+      setAnnotationDrawer((prev) => ({
+        ...(prev || {}),
+        items: Array.isArray(refreshed.items) ? refreshed.items : [],
+        error: "",
+      }));
+      setAnnotationComment("");
+      setAnnotationStatus("needs_review");
+      setMessage("Annotation added.");
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to create annotation.");
+    } finally {
+      setAnnotationSaving(false);
+    }
+  }
+
   const rangeStart = total === 0 ? 0 : offset + 1;
   const rangeEnd = offset + rows.length;
   const canPrev = offset > 0;
@@ -362,6 +433,96 @@ export default function StewardshipPage() {
           <p className="text-sm text-rose-700 dark:text-rose-300">{compareDrawer.error}</p>
         ) : null}
         {compareDrawer?.data ? <CompareThreeColumn data={compareDrawer.data} /> : null}
+      </Drawer>
+      <Drawer
+        open={Boolean(annotationDrawer)}
+        onClose={() => setAnnotationDrawer(null)}
+        title={
+          annotationDrawer?.row?.id
+            ? `Annotations for #${annotationDrawer.row.id}`
+            : "Annotations"
+        }
+        subtitle="Data annotation and stewardship actions"
+        width="max-w-2xl"
+        footer={
+          <DrawerFooterActions>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setAnnotationDrawer(null)}
+              disabled={annotationSaving}
+            >
+              Close
+            </Button>
+            <Button size="sm" onClick={handleCreateAnnotation} disabled={annotationSaving}>
+              {annotationSaving ? "Saving..." : "Add annotation"}
+            </Button>
+          </DrawerFooterActions>
+        }
+      >
+        {annotationDrawer ? (
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-sm">
+                <span className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                  Status
+                </span>
+                <select
+                  value={annotationStatus}
+                  onChange={(e) => setAnnotationStatus(e.target.value)}
+                  className="mdm-input py-2 text-sm"
+                >
+                  {ANNOTATION_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs font-semibold text-[var(--text-muted)]">
+                Comment
+              </span>
+              <textarea
+                value={annotationComment}
+                onChange={(e) => setAnnotationComment(e.target.value)}
+                rows={4}
+                className="mdm-input w-full py-2 text-sm"
+                placeholder="Add steward context, decision rationale, or duplicate reasoning..."
+              />
+            </label>
+            {annotationDrawer.error ? (
+              <p className="text-sm text-rose-700 dark:text-rose-300">{annotationDrawer.error}</p>
+            ) : null}
+            {annotationLoading ? (
+              <div className={`flex items-center gap-2 text-sm ${MDM_MUTED}`}>
+                <Spinner />
+                Loading annotations...
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {(annotationDrawer.items || []).map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-[var(--border-color)] bg-[var(--color-surface)] p-3"
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <StatusBadge status={item.status} />
+                      <span className={`text-xs ${MDM_MUTED}`}>
+                        {item.created_by} • {new Date(item.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[var(--foreground)]">{item.comment || "—"}</p>
+                  </div>
+                ))}
+                {!annotationDrawer.items?.length ? (
+                  <p className={`text-sm ${MDM_MUTED}`}>No annotations yet.</p>
+                ) : null}
+              </div>
+            )}
+          </div>
+        ) : null}
       </Drawer>
       <ConfirmModal
         open={confirmBulkRejectOpen}
@@ -568,6 +729,14 @@ export default function StewardshipPage() {
                                 onClick={() => handleCompare(row.id)}
                               >
                                 {compareLoadingId === row.id ? "…" : "Compare"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleOpenAnnotations(row)}
+                              >
+                                Annotate
                               </Button>
                               <Button
                                 size="sm"

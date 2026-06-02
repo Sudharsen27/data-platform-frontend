@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useMobileNav } from "@/context/MobileNavContext";
 
@@ -73,6 +74,38 @@ export default function Sidebar() {
   const { isAdmin } = useAuth();
   const { open, close, desktopCollapsed } = useMobileNav();
 
+  useEffect(() => {
+    // Keep mobile menu behavior predictable: lock page scroll while open and close on Escape.
+    if (!open) {
+      return;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        close();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, close]);
+
+  useEffect(() => {
+    // If viewport switches to desktop while drawer is open, close mobile state.
+    function onResize() {
+      if (window.innerWidth >= 768 && open) {
+        close();
+      }
+    }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [open, close]);
+
   const groups = isAdmin
     ? [
         NAV_GROUPS[0],
@@ -93,7 +126,7 @@ export default function Sidebar() {
         tabIndex={-1}
       />
       <aside
-        className={`mdm-sidebar fixed inset-y-0 left-0 z-50 flex h-full w-[min(100vw-3rem,18rem)] max-w-[18rem] flex-col shadow-xl transition-[transform,width] duration-200 ease-out md:static md:z-auto md:h-auto md:min-h-screen md:max-w-none md:shrink-0 md:translate-x-0 md:self-stretch md:shadow-none ${
+        className={`mdm-sidebar fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[min(100vw-3rem,20rem)] max-w-[20rem] flex-col shadow-xl transition-[transform,width] duration-200 ease-out md:static md:z-auto md:h-auto md:min-h-screen md:max-w-none md:shrink-0 md:translate-x-0 md:self-stretch md:shadow-none ${
           open ? "translate-x-0" : "-translate-x-full"
         } ${desktopCollapsed ? "md:w-[4.5rem] md:min-w-[4.5rem]" : "md:w-72"}`}
       >
@@ -127,7 +160,7 @@ export default function Sidebar() {
           </button>
         </div>
         <nav
-          className={`flex flex-col gap-4 px-3 py-3 md:flex-1 md:overflow-y-auto md:py-4 ${desktopCollapsed ? "md:px-2" : "md:px-4"}`}
+          className={`flex flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-3 py-3 pb-[calc(5rem+env(safe-area-inset-bottom))] md:py-4 md:pb-6 ${desktopCollapsed ? "md:px-2" : "md:px-4"}`}
         >
           {groups.map((group) => (
             <div key={group.label}>
