@@ -50,6 +50,10 @@ export default function QuarantinePage() {
   const [explainDrawer, setExplainDrawer] = useState(null);
 
   useEffect(() => {
+    if (isCheckingAuth) {
+      return;
+    }
+
     async function fetchQuarantineRows() {
       try {
         setIsLoading(true);
@@ -74,7 +78,7 @@ export default function QuarantinePage() {
     }
 
     fetchQuarantineRows();
-  }, [offset, limit]);
+  }, [offset, limit, isCheckingAuth]);
 
   useEffect(() => {
     if (!message && !errorMessage) {

@@ -14,6 +14,11 @@ const PROTECTED_PREFIXES = [
   "/pipeline",
   "/users",
   "/audit",
+  "/master-data",
+  "/duplicates",
+  "/upload",
+  "/ai-activity",
+  "/profile",
 ];
 
 function isProtectedPath(pathname: string) {
@@ -57,5 +62,15 @@ export const config = {
     "/pipeline/:path*",
     "/users/:path*",
     "/audit/:path*",
+    "/master-data",
+    "/master-data/:path*",
+    "/duplicates",
+    "/duplicates/:path*",
+    "/upload",
+    "/upload/:path*",
+    "/ai-activity",
+    "/ai-activity/:path*",
+    "/profile",
+    "/profile/:path*",
   ],
 };

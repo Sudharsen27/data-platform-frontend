@@ -25,6 +25,7 @@ function percent(job) {
 export default function UploadPage() {
   const { isCheckingAuth } = useRequireAdmin();
   const [file, setFile] = useState(null);
+  const [importTarget, setImportTarget] = useState("quarantine");
   const [job, setJob] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -109,7 +110,7 @@ export default function UploadPage() {
     try {
       setErrorMessage("");
       setIsUploading(true);
-      const created = await uploadCsvAndStartIngestion(file);
+      const created = await uploadCsvAndStartIngestion(file, { target: importTarget });
       setJob(created);
       setJobStartedAtMs(Date.now());
       setToastMessage("Upload accepted. Ingestion job started.");
@@ -154,9 +155,13 @@ export default function UploadPage() {
         <section>
           <h2 className="text-lg font-semibold text-zinc-900">CSV Upload & Ingestion Job</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Upload a large CSV file, run ingestion in background, then review results in{" "}
-            <Link href="/duplicates" className="font-semibold text-blue-700 hover:underline">
-              Duplicates
+            Upload a CSV file and import into{" "}
+            <Link href="/quarantine" className="font-semibold text-blue-700 hover:underline">
+              Quarantine
+            </Link>{" "}
+            (recommended) or directly into{" "}
+            <Link href="/master-data" className="font-semibold text-blue-700 hover:underline">
+              Golden Master
             </Link>
             .
           </p>
@@ -164,6 +169,35 @@ export default function UploadPage() {
 
         <Card>
           <form className="space-y-3" onSubmit={handleUpload}>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-zinc-700">Import destination</p>
+              <div className="flex flex-wrap gap-4 text-sm text-zinc-700">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="importTarget"
+                    value="quarantine"
+                    checked={importTarget === "quarantine"}
+                    onChange={() => setImportTarget("quarantine")}
+                  />
+                  Quarantine (recommended)
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="importTarget"
+                    value="golden"
+                    checked={importTarget === "golden"}
+                    onChange={() => setImportTarget("golden")}
+                  />
+                  Golden Master (admin bypass)
+                </label>
+              </div>
+              <p className="text-xs text-zinc-500">
+                Quarantine routes records through rules, pipeline, and stewardship before golden publish.
+                CSV columns: name, email, error (optional).
+              </p>
+            </div>
             <div
               className={`rounded-xl border border-dashed p-4 transition ${
                 isDragActive
@@ -235,7 +269,8 @@ export default function UploadPage() {
             <div className="space-y-3 text-sm text-zinc-700">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p>
-                  <span className="font-medium">Job:</span> #{job.id} · {job.filename}
+                  <span className="font-medium">Job:</span> #{job.id} · {job.filename} ·{" "}
+                  {job.target || "quarantine"}
                 </p>
                 <span className={`rounded-full px-2.5 py-1 text-xs font-semibold uppercase ${statusStyle}`}>
                   {job.status}
@@ -302,8 +337,11 @@ export default function UploadPage() {
                 >
                   Refresh status
                 </Button>
-                <Link href="/duplicates" className="mdm-chip-link">
-                  Open Duplicates
+                <Link
+                  href={job.target === "golden" ? "/master-data" : "/quarantine"}
+                  className="mdm-chip-link"
+                >
+                  {job.target === "golden" ? "Open Golden Master" : "Open Quarantine"}
                 </Link>
               </div>
             </div>
