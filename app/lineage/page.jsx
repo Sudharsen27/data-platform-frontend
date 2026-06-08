@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRegisterAiPageContext } from "@/context/AiAssistantContext";
 import PageShell from "@/components/layout/PageShell";
 import Card from "@/components/ui/Card";
 import Toast from "@/components/ui/Toast";
-import { getLineageGraph, getLineageImpact } from "@/lib/api";
+import LineageImpactDrawer from "@/components/lineage/LineageImpactDrawer";
+import Button from "@/components/ui/Button";
+import { getLineageGraph, getLineageImpact, postLineageImpactAnalyze } from "@/lib/api";
 import { useRequireAuth } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -58,6 +61,26 @@ function LineagePageContent() {
   const [impactField, setImpactField] = useState("email");
   const [impactResult, setImpactResult] = useState(null);
   const [impactLoading, setImpactLoading] = useState(false);
+  const [impactDrawerOpen, setImpactDrawerOpen] = useState(false);
+  const [impactDetail, setImpactDetail] = useState(null);
+  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [aiEngine, setAiEngine] = useState("");
+
+  const aiPageContext = useMemo(() => {
+    if (!selectedNodeKey) {
+      return { page: "lineage", graph_node_count: nodes.length, graph_edge_count: edges.length };
+    }
+    const node = nodes.find((n) => n.key === selectedNodeKey);
+    return {
+      page: "lineage",
+      node_key: selectedNodeKey,
+      node_label: node?.label || selectedNodeKey,
+      node_layer: node?.layer || "",
+      node_system: node?.system || "",
+      impact_field: impactField,
+    };
+  }, [selectedNodeKey, nodes, edges.length, impactField]);
+  useRegisterAiPageContext(aiPageContext);
 
   useEffect(() => {
     if (!isReady || !isAuthenticated) {
@@ -180,6 +203,49 @@ function LineagePageContent() {
     }
   }
 
+  async function openImpactDrawer() {
+    const node = nodes.find((n) => n.key === selectedNodeKey);
+    const question = selectedNodeKey
+      ? `What happens if ${node?.label || selectedNodeKey} changes?`
+      : impactField.trim()
+        ? `What happens if ${impactField} changes?`
+        : "Explain lineage impact for the selected scope";
+
+    try {
+      setImpactDrawerOpen(true);
+      setImpactLoading(true);
+      setErrorMessage("");
+      setImpactDetail(null);
+      setAiAnalysis("");
+
+      const payload = await postLineageImpactAnalyze({
+        question,
+        nodeKey: selectedNodeKey,
+        field: impactField,
+      });
+
+      setImpactDetail(payload.impact_detail || null);
+      setAiAnalysis(payload.analysis || "");
+      setAiEngine(payload.source_engine || "");
+      if (payload.impact_detail?.affected_node_keys?.length) {
+        setImpactResult({
+          anchor_node_key: payload.impact_detail.anchor_node_key,
+          affected_node_keys: payload.impact_detail.affected_node_keys,
+          summary: payload.impact_detail.summary,
+          catalog_assets: payload.impact_detail.downstream_assets,
+        });
+        if (payload.impact_detail.anchor_node_key) {
+          setSelectedNodeKey(payload.impact_detail.anchor_node_key);
+        }
+      }
+    } catch (error) {
+      setImpactDrawerOpen(false);
+      setErrorMessage(error.message || "Impact analysis failed.");
+    } finally {
+      setImpactLoading(false);
+    }
+  }
+
   if (isCheckingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-600">
@@ -247,6 +313,13 @@ function LineagePageContent() {
                 >
                   Analyze selected node
                 </button>
+                <Button
+                  type="button"
+                  disabled={impactLoading || (!selectedNodeKey && !impactField.trim())}
+                  onClick={openImpactDrawer}
+                >
+                  {impactLoading && impactDrawerOpen ? "Analyzing…" : "Analyze Impact"}
+                </Button>
                 {impactResult ? (
                   <button
                     type="button"
@@ -444,6 +517,15 @@ function LineagePageContent() {
               )}
             </Card>
       </PageShell>
+
+      <LineageImpactDrawer
+        open={impactDrawerOpen}
+        onClose={() => setImpactDrawerOpen(false)}
+        loading={impactLoading}
+        impactDetail={impactDetail}
+        aiAnalysis={aiAnalysis}
+        aiEngine={aiEngine}
+      />
     </>
   );
 }

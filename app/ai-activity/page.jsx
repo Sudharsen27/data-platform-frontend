@@ -16,6 +16,9 @@ const PAGE_SIZE = 50;
 
 const ACTION_OPTIONS = [
   { value: "", label: "All AI actions" },
+  { value: "copilot_chat", label: "Copilot chat" },
+  { value: "lineage_impact_analyze", label: "Lineage impact" },
+  { value: "classification_analyze", label: "Classification" },
   { value: "generate_rules", label: "Generate rules" },
   { value: "suggest_stewardship_owners", label: "Assign stewards" },
   { value: "explain_quarantine", label: "Explain quarantine" },

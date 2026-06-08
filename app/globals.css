@@ -1773,3 +1773,168 @@ h3 {
   line-height: 1.45;
   color: var(--foreground);
 }
+
+/* —— AI Assistant (global FAB + panel) — enterprise Indigo Graphite —— */
+@keyframes mdm-ai-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.mdm-ai-fab-wrap {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1rem;
+  z-index: 80;
+}
+
+@media (min-width: 640px) {
+  .mdm-ai-fab-wrap {
+    bottom: 1.5rem;
+    right: 1.5rem;
+  }
+}
+
+.mdm-ai-fab-wrap--hidden {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+.mdm-ai-fab-wrap--visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease;
+}
+
+.mdm-ai-fab-pro {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  padding: 0.5rem 1rem 0.5rem 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.015em;
+  color: var(--foreground);
+  cursor: pointer;
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-card);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.mdm-ai-fab-pro:hover {
+  border-color: var(--color-ring);
+  box-shadow:
+    var(--shadow-card),
+    0 4px 20px rgba(79, 70, 229, 0.12);
+  transform: translateY(-1px);
+}
+
+.mdm-ai-fab-pro:active {
+  transform: translateY(0);
+}
+
+.mdm-ai-fab-pro:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.dark .mdm-ai-fab-pro {
+  background: var(--color-surface-elevated);
+  border-color: color-mix(in srgb, var(--border-color) 80%, #6366f1 20%);
+}
+
+.dark .mdm-ai-fab-pro:hover {
+  box-shadow:
+    var(--shadow-card),
+    0 4px 24px rgba(99, 102, 241, 0.18);
+}
+
+.mdm-ai-fab-pro__icon {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: var(--color-primary);
+  background: var(--color-primary-muted);
+  transition: background 0.2s ease;
+}
+
+.mdm-ai-fab-pro:hover .mdm-ai-fab-pro__icon {
+  background: color-mix(in srgb, var(--color-primary-muted) 70%, var(--color-primary) 30%);
+}
+
+.dark .mdm-ai-fab-pro__icon {
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.mdm-ai-fab-pro__label {
+  padding-right: 0.125rem;
+  white-space: nowrap;
+}
+
+.mdm-ai-panel {
+  background: var(--color-surface);
+  box-shadow: -4px 0 24px rgba(9, 9, 11, 0.08);
+}
+
+.dark .mdm-ai-panel {
+  box-shadow: -4px 0 32px rgba(0, 0, 0, 0.35);
+}
+
+.mdm-ai-panel--open {
+  animation: mdm-ai-panel-in 0.28s ease-out forwards;
+}
+
+.mdm-ai-panel-header {
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--color-surface);
+}
+
+.mdm-ai-panel-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+}
+
+.mdm-ai-prompt-chip {
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border-color);
+  background: var(--color-surface);
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  text-align: left;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease,
+    background 0.18s ease;
+}
+
+.mdm-ai-prompt-chip:hover:not(:disabled) {
+  border-color: var(--color-ring);
+  color: var(--foreground);
+  background: var(--color-primary-muted);
+}

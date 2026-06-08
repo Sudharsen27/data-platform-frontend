@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRegisterAiPageContext } from "@/context/AiAssistantContext";
 import PageShell from "@/components/layout/PageShell";
 import RuleForm from "@/components/rules/RuleForm";
 import RuleTable from "@/components/rules/RuleTable";
@@ -27,6 +28,20 @@ export default function RulesPage() {
   const [testEmail, setTestEmail] = useState("user7");
   const [testResult, setTestResult] = useState(null);
   const [isTestingRules, setIsTestingRules] = useState(false);
+
+  const aiPageContext = useMemo(() => {
+    if (!editingRule) {
+      return { page: "rules", active_rule_count: rules.length };
+    }
+    return {
+      page: "rules",
+      rule_id: editingRule.id,
+      rule_field: editingRule.field,
+      rule_text: editingRule.rule,
+      rule_status: editingRule.status,
+    };
+  }, [editingRule, rules.length]);
+  useRegisterAiPageContext(aiPageContext);
 
   useEffect(() => {
     if (!isReady || !isAuthenticated || !isAdmin) {

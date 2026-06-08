@@ -18,6 +18,7 @@ const PROTECTED_PREFIXES = [
   "/duplicates",
   "/upload",
   "/ai-activity",
+  "/copilot",
   "/profile",
 ];
 
@@ -70,6 +71,8 @@ export const config = {
     "/upload/:path*",
     "/ai-activity",
     "/ai-activity/:path*",
+    "/copilot",
+    "/copilot/:path*",
     "/profile",
     "/profile/:path*",
   ],

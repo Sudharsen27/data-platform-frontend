@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRegisterAiPageContext } from "@/context/AiAssistantContext";
 import PageShell from "@/components/layout/PageShell";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -10,7 +11,14 @@ import Toast from "@/components/ui/Toast";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Spinner from "@/components/ui/Spinner";
 import Drawer, { DrawerFooterActions } from "@/components/ui/Drawer";
-import { createCatalogAsset, getCatalogAssetLineageImpact, getCatalogAssets } from "@/lib/api";
+import ClassificationBadge from "@/components/governance/ClassificationBadge";
+import ClassificationSummary from "@/components/governance/ClassificationSummary";
+import {
+  createCatalogAsset,
+  getCatalogAssetLineageImpact,
+  getCatalogAssets,
+  postClassificationAnalyzeDataset,
+} from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useRequireAuth } from "@/lib/auth";
 import { useAuth } from "@/context/AuthContext";
@@ -54,6 +62,26 @@ function CatalogPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [assetDrawer, setAssetDrawer] = useState(null);
   const [impactLoading, setImpactLoading] = useState(false);
+  const [classificationLoading, setClassificationLoading] = useState(false);
+  const [classificationResult, setClassificationResult] = useState(null);
+  const [fieldClassifications, setFieldClassifications] = useState({});
+
+  const aiPageContext = useMemo(() => {
+    const asset = assetDrawer?.asset;
+    if (!asset) {
+      return { page: "catalog" };
+    }
+    return {
+      page: "catalog",
+      asset_id: asset.id,
+      asset_name: asset.name,
+      asset_key: asset.asset_key,
+      domain: asset.domain,
+      description: asset.description,
+      schema_fields: asset.schema_fields,
+    };
+  }, [assetDrawer]);
+  useRegisterAiPageContext(aiPageContext);
 
   useEffect(() => {
     const qq = searchParams.get("q");
@@ -94,6 +122,28 @@ function CatalogPageContent() {
 
   function openAssetDrawer(row) {
     setAssetDrawer({ asset: row, impact: null, impactError: "" });
+    setClassificationResult(null);
+  }
+
+  async function loadDrawerClassification() {
+    if (!assetDrawer?.asset?.id) {
+      return;
+    }
+    try {
+      setClassificationLoading(true);
+      setErrorMessage("");
+      const payload = await postClassificationAnalyzeDataset(assetDrawer.asset.id);
+      setClassificationResult(payload);
+      const map = {};
+      for (const field of payload.all_fields || []) {
+        map[field.field_name] = field.classification;
+      }
+      setFieldClassifications((prev) => ({ ...prev, [assetDrawer.asset.id]: map }));
+    } catch (error) {
+      setErrorMessage(error.message || "Classification analysis failed.");
+    } finally {
+      setClassificationLoading(false);
+    }
   }
 
   async function loadDrawerImpact() {
@@ -200,6 +250,14 @@ function CatalogPageContent() {
                 {impactLoading ? "Loading…" : "Lineage impact"}
               </Button>
             ) : null}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={loadDrawerClassification}
+              disabled={classificationLoading}
+            >
+              {classificationLoading ? "Analyzing…" : "Analyze Classification"}
+            </Button>
             <Button type="button" onClick={() => setAssetDrawer(null)}>
               Close
             </Button>
@@ -228,11 +286,46 @@ function CatalogPageContent() {
                 <dd>{drawerAsset.tags || "—"}</dd>
               </div>
             </dl>
-            <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-blue-800">Data contract</p>
-              <p className="mt-2 font-mono text-xs text-zinc-800">
-                {drawerAsset.schema_fields || "No schema fields registered"}
+            <ClassificationSummary loading={classificationLoading} result={classificationResult} />
+
+            <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3 dark:border-indigo-900/40 dark:bg-indigo-950/20">
+              <p className="text-xs font-bold uppercase tracking-wide text-blue-800 dark:text-indigo-300">
+                Data contract
               </p>
+              {(drawerAsset.schema_fields || "")
+                .split(",")
+                .map((f) => f.trim())
+                .filter(Boolean).length > 0 ? (
+                <ul className="mt-2 space-y-1">
+                  {drawerAsset.schema_fields
+                    .split(",")
+                    .map((f) => f.trim())
+                    .filter(Boolean)
+                    .map((field) => (
+                      <li key={field} className="flex items-center justify-between gap-2 font-mono text-xs">
+                        <span className="text-zinc-800 dark:text-zinc-200">{field}</span>
+                        {classificationResult?.all_fields?.find((r) => r.field_name === field) ? (
+                          <ClassificationBadge
+                            classification={
+                              classificationResult.all_fields.find((r) => r.field_name === field)
+                                .classification
+                            }
+                            size="xs"
+                          />
+                        ) : fieldClassifications[drawerAsset.id]?.[field] ? (
+                          <ClassificationBadge
+                            classification={fieldClassifications[drawerAsset.id][field]}
+                            size="xs"
+                          />
+                        ) : null}
+                      </li>
+                    ))}
+                </ul>
+              ) : (
+                <p className="mt-2 font-mono text-xs text-zinc-800 dark:text-zinc-200">
+                  No schema fields registered
+                </p>
+              )}
               <p className="mt-2 text-xs text-zinc-600">
                 Version {drawerAsset.contract_version || "1.0"} · SLA {drawerAsset.sla_hours ?? 24}h
               </p>

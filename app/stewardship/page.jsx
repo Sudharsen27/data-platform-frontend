@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRegisterAiPageContext } from "@/context/AiAssistantContext";
 import { useRouter } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
 import Button from "@/components/ui/Button";
@@ -78,6 +79,26 @@ export default function StewardshipPage() {
   const [annotationLoading, setAnnotationLoading] = useState(false);
   const [annotationSaving, setAnnotationSaving] = useState(false);
   const [annotationComment, setAnnotationComment] = useState("");
+
+  const activeTask = useMemo(
+    () => rows.find((row) => row.id === activeId) || compareDrawer?.row || null,
+    [rows, activeId, compareDrawer]
+  );
+  const aiPageContext = useMemo(() => {
+    if (!activeTask) {
+      return { page: "stewardship", pending_total: pendingTotal };
+    }
+    return {
+      page: "stewardship",
+      stewardship_id: activeTask.id,
+      task_name: activeTask.name,
+      task_issue: activeTask.issue,
+      task_email: activeTask.email,
+      task_status: activeTask.status,
+      owner_email: activeTask.owner_email,
+    };
+  }, [activeTask, pendingTotal]);
+  useRegisterAiPageContext(aiPageContext);
   const [annotationStatus, setAnnotationStatus] = useState("needs_review");
 
   const pendingOnPage = useMemo(

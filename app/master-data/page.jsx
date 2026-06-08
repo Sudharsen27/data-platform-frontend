@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useRegisterAiPageContext } from "@/context/AiAssistantContext";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
@@ -38,6 +39,21 @@ function MasterDataPageContent() {
   const [compareData, setCompareData] = useState(null);
   const [compareLoadingId, setCompareLoadingId] = useState(null);
   const [toastMessage, setToastMessage] = useState("");
+
+  const aiPageContext = useMemo(() => {
+    const golden = compareData?.golden;
+    if (!golden) {
+      return { page: "master-data", record_count: rows.length };
+    }
+    return {
+      page: "master-data",
+      master_id: golden.id,
+      record_name: golden.name,
+      record_email: golden.email,
+      source_queue_id: golden.source_queue_id,
+    };
+  }, [compareData, rows.length]);
+  useRegisterAiPageContext(aiPageContext);
 
   const handleCompare = useCallback(async (sourceQueueId) => {
     try {

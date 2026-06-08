@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRegisterAiPageContext } from "@/context/AiAssistantContext";
 import { useRouter } from "next/navigation";
 import PageShell from "@/components/layout/PageShell";
 import DataTable from "@/components/table/DataTable";
@@ -48,6 +49,21 @@ export default function QuarantinePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [explainingId, setExplainingId] = useState(null);
   const [explainDrawer, setExplainDrawer] = useState(null);
+
+  const aiPageContext = useMemo(() => {
+    const row = explainDrawer?.row;
+    if (!row) {
+      return { page: "quarantine", quarantine_count: totalRows };
+    }
+    return {
+      page: "quarantine",
+      record_id: row.id,
+      record_name: row.name,
+      record_email: row.email,
+      quarantine_error: row.error,
+    };
+  }, [explainDrawer, totalRows]);
+  useRegisterAiPageContext(aiPageContext);
 
   useEffect(() => {
     if (isCheckingAuth) {
