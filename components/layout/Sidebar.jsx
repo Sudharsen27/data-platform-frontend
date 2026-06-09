@@ -20,6 +20,7 @@ const NAV_GROUPS = [
   {
     label: "Govern",
     items: [
+      { name: "AI Governance", href: "/governance", short: "AG" },
       { name: "Catalog", href: "/catalog", short: "DC" },
       { name: "Lineage", href: "/lineage", short: "LN" },
       { name: "Audit", href: "/audit", short: "AU" },

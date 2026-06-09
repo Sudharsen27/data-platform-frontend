@@ -13,11 +13,28 @@ import Spinner from "@/components/ui/Spinner";
 import Drawer, { DrawerFooterActions } from "@/components/ui/Drawer";
 import ClassificationBadge from "@/components/governance/ClassificationBadge";
 import ClassificationSummary from "@/components/governance/ClassificationSummary";
+import DatasetDocumentationPanel from "@/components/governance/DatasetDocumentationPanel";
+import RuleRecommendationPanel from "@/components/governance/RuleRecommendationPanel";
+import GlossaryTermPanel, {
+  GlossaryDatasetSummary,
+} from "@/components/governance/GlossaryTermPanel";
 import {
   createCatalogAsset,
   getCatalogAssetLineageImpact,
   getCatalogAssets,
+  getDatasetDocumentation,
+  getGlossaryEntries,
   postClassificationAnalyzeDataset,
+  postDocumentationExport,
+  postDocumentationGenerate,
+  postDocumentationSave,
+  postRuleRecommendationApprove,
+  postRuleRecommendationReject,
+  postRulesRecommend,
+  postRulesRecommendField,
+  postGlossaryGenerateDataset,
+  postGlossaryGenerateField,
+  postGlossarySave,
 } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useRequireAuth } from "@/lib/auth";
@@ -65,6 +82,17 @@ function CatalogPageContent() {
   const [classificationLoading, setClassificationLoading] = useState(false);
   const [classificationResult, setClassificationResult] = useState(null);
   const [fieldClassifications, setFieldClassifications] = useState({});
+  const [glossaryLoadingField, setGlossaryLoadingField] = useState("");
+  const [glossaryByField, setGlossaryByField] = useState({});
+  const [datasetGlossaryLoading, setDatasetGlossaryLoading] = useState(false);
+  const [datasetGlossary, setDatasetGlossary] = useState(null);
+  const [savedGlossaryMap, setSavedGlossaryMap] = useState({});
+  const [documentationLoading, setDocumentationLoading] = useState(false);
+  const [datasetDocumentation, setDatasetDocumentation] = useState(null);
+  const [ruleRecommendLoading, setRuleRecommendLoading] = useState(false);
+  const [ruleRecommendations, setRuleRecommendations] = useState(null);
+  const [fieldRuleRecommendations, setFieldRuleRecommendations] = useState({});
+  const [fieldRuleLoading, setFieldRuleLoading] = useState("");
 
   const aiPageContext = useMemo(() => {
     const asset = assetDrawer?.asset;
@@ -123,6 +151,249 @@ function CatalogPageContent() {
   function openAssetDrawer(row) {
     setAssetDrawer({ asset: row, impact: null, impactError: "" });
     setClassificationResult(null);
+    setGlossaryByField({});
+    setDatasetGlossary(null);
+    setDatasetDocumentation(null);
+    setRuleRecommendations(null);
+    setFieldRuleRecommendations({});
+    loadSavedGlossaryForAsset(row.id);
+    loadSavedDocumentation(row.id);
+  }
+
+  async function generateDatasetRules() {
+    if (!assetDrawer?.asset?.id) {
+      return;
+    }
+    try {
+      setRuleRecommendLoading(true);
+      setErrorMessage("");
+      const payload = await postRulesRecommend(assetDrawer.asset.id);
+      setRuleRecommendations(payload);
+      setMessage("Rule recommendations generated.");
+    } catch (error) {
+      setErrorMessage(error.message || "Rule recommendation failed.");
+    } finally {
+      setRuleRecommendLoading(false);
+    }
+  }
+
+  async function suggestFieldRules(fieldName) {
+    if (!assetDrawer?.asset?.id) {
+      return;
+    }
+    try {
+      setFieldRuleLoading(fieldName);
+      setErrorMessage("");
+      const payload = await postRulesRecommendField({
+        fieldName,
+        datasetId: assetDrawer.asset.id,
+      });
+      setFieldRuleRecommendations((prev) => ({ ...prev, [fieldName]: payload }));
+    } catch (error) {
+      setErrorMessage(error.message || "Field rule suggestion failed.");
+    } finally {
+      setFieldRuleLoading("");
+    }
+  }
+
+  async function approveRuleRecommendation(rule) {
+    if (!rule?.id) {
+      return;
+    }
+    try {
+      await postRuleRecommendationApprove(rule.id);
+      setMessage("Rule approved and saved to the rules engine.");
+      if (assetDrawer?.asset?.id) {
+        const payload = await postRulesRecommend(assetDrawer.asset.id);
+        setRuleRecommendations(payload);
+      }
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to approve rule.");
+    }
+  }
+
+  async function rejectRuleRecommendation(rule) {
+    if (!rule?.id) {
+      return;
+    }
+    try {
+      await postRuleRecommendationReject(rule.id);
+      setMessage("Rule recommendation rejected.");
+      if (assetDrawer?.asset?.id) {
+        const payload = await postRulesRecommend(assetDrawer.asset.id);
+        setRuleRecommendations(payload);
+      }
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to reject rule.");
+    }
+  }
+
+  async function loadSavedDocumentation(assetId) {
+    try {
+      const saved = await getDatasetDocumentation(assetId);
+      if (saved) {
+        setDatasetDocumentation(saved);
+      }
+    } catch {
+      /* saved documentation optional */
+    }
+  }
+
+  async function generateDatasetDocumentation() {
+    if (!assetDrawer?.asset?.id) {
+      return;
+    }
+    try {
+      setDocumentationLoading(true);
+      setErrorMessage("");
+      const payload = await postDocumentationGenerate(assetDrawer.asset.id);
+      setDatasetDocumentation(payload);
+      setMessage("Dataset documentation generated.");
+    } catch (error) {
+      setErrorMessage(error.message || "Documentation generation failed.");
+    } finally {
+      setDocumentationLoading(false);
+    }
+  }
+
+  async function saveDatasetDocumentation(entry) {
+    if (!assetDrawer?.asset?.id) {
+      return;
+    }
+    try {
+      const saved = await postDocumentationSave({
+        catalog_asset_id: assetDrawer.asset.id,
+        title: entry.title || "",
+        summary: entry.summary || "",
+        business_description: entry.business_description || "",
+        purpose: entry.purpose || "",
+        key_fields: entry.key_fields || [],
+        owner_recommendation: entry.owner_recommendation || "",
+        governance_notes: entry.governance_notes || "",
+        classification_summary: entry.classification_summary || "",
+        quality_expectations: entry.quality_expectations || "",
+        usage_guidelines: entry.usage_guidelines || "",
+        compliance_considerations: entry.compliance_considerations || "",
+        status: "approved",
+      });
+      setDatasetDocumentation(saved);
+      setMessage("Documentation saved.");
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to save documentation.");
+    }
+  }
+
+  async function exportDatasetDocumentation(format) {
+    if (!assetDrawer?.asset?.id) {
+      return;
+    }
+    try {
+      const payload = await postDocumentationExport(assetDrawer.asset.id, format);
+      if (format === "pdf") {
+        const printWindow = window.open("", "_blank");
+        if (printWindow) {
+          printWindow.document.write(payload.content);
+          printWindow.document.close();
+          printWindow.focus();
+          printWindow.print();
+        }
+        return;
+      }
+      const blob = new Blob([payload.content], { type: payload.content_type });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = payload.filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setErrorMessage(error.message || "Export failed.");
+    }
+  }
+
+  async function loadSavedGlossaryForAsset(assetId) {
+    try {
+      const payload = await getGlossaryEntries({ datasetId: assetId });
+      const map = {};
+      for (const item of payload.items || []) {
+        const key = item.field_name || "__dataset__";
+        map[key] = item;
+      }
+      setSavedGlossaryMap((prev) => ({ ...prev, [assetId]: map }));
+    } catch {
+      /* saved entries optional */
+    }
+  }
+
+  async function generateFieldGlossary(fieldName) {
+    if (!assetDrawer?.asset?.id) {
+      return;
+    }
+    try {
+      setGlossaryLoadingField(fieldName);
+      setErrorMessage("");
+      const payload = await postGlossaryGenerateField({
+        fieldName,
+        datasetId: assetDrawer.asset.id,
+      });
+      setGlossaryByField((prev) => ({
+        ...prev,
+        [fieldName]: payload,
+      }));
+    } catch (error) {
+      setErrorMessage(error.message || "Glossary generation failed.");
+    } finally {
+      setGlossaryLoadingField("");
+    }
+  }
+
+  async function generateDatasetGlossary() {
+    if (!assetDrawer?.asset?.id) {
+      return;
+    }
+    try {
+      setDatasetGlossaryLoading(true);
+      setErrorMessage("");
+      const payload = await postGlossaryGenerateDataset(assetDrawer.asset.id);
+      setDatasetGlossary(payload);
+      const fieldMap = {};
+      for (const fg of payload.field_glossaries || []) {
+        fieldMap[fg.field_name] = fg;
+      }
+      setGlossaryByField((prev) => ({ ...prev, ...fieldMap }));
+    } catch (error) {
+      setErrorMessage(error.message || "Dataset glossary generation failed.");
+    } finally {
+      setDatasetGlossaryLoading(false);
+    }
+  }
+
+  async function saveGlossaryEntry(fieldName, entry) {
+    if (!assetDrawer?.asset?.id) {
+      return;
+    }
+    try {
+      const saved = await postGlossarySave({
+        catalog_asset_id: assetDrawer.asset.id,
+        field_name: fieldName || "",
+        title: entry.title || entry.dataset_title || "",
+        definition: entry.definition || entry.dataset_definition || "",
+        usage: entry.usage || entry.business_usage || "",
+        governance_notes: entry.governance_notes || "",
+        examples: entry.examples || [],
+        status: "approved",
+      });
+      setMessage("Glossary definition saved.");
+      setSavedGlossaryMap((prev) => ({
+        ...prev,
+        [assetDrawer.asset.id]: {
+          ...(prev[assetDrawer.asset.id] || {}),
+          [fieldName || "__dataset__"]: saved,
+        },
+      }));
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to save glossary definition.");
+    }
   }
 
   async function loadDrawerClassification() {
@@ -258,6 +529,30 @@ function CatalogPageContent() {
             >
               {classificationLoading ? "Analyzing…" : "Analyze Classification"}
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={generateDatasetGlossary}
+              disabled={datasetGlossaryLoading}
+            >
+              {datasetGlossaryLoading ? "Generating…" : "Generate Dataset Glossary"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={generateDatasetDocumentation}
+              disabled={documentationLoading}
+            >
+              {documentationLoading ? "Generating…" : "Generate Documentation"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={generateDatasetRules}
+              disabled={ruleRecommendLoading}
+            >
+              {ruleRecommendLoading ? "Generating…" : "Generate Rules"}
+            </Button>
             <Button type="button" onClick={() => setAssetDrawer(null)}>
               Close
             </Button>
@@ -287,6 +582,40 @@ function CatalogPageContent() {
               </div>
             </dl>
             <ClassificationSummary loading={classificationLoading} result={classificationResult} />
+            <DatasetDocumentationPanel
+              loading={documentationLoading}
+              doc={datasetDocumentation}
+              onRegenerate={generateDatasetDocumentation}
+              onSave={saveDatasetDocumentation}
+              onExport={exportDatasetDocumentation}
+            />
+            <RuleRecommendationPanel
+              loading={ruleRecommendLoading}
+              result={ruleRecommendations}
+              fieldRules={fieldRuleRecommendations}
+              fieldLoading={fieldRuleLoading}
+              onGenerateDataset={generateDatasetRules}
+              onSuggestField={suggestFieldRules}
+              onApprove={approveRuleRecommendation}
+              onReject={rejectRuleRecommendation}
+            />
+            <GlossaryDatasetSummary
+              loading={datasetGlossaryLoading}
+              result={datasetGlossary}
+              onRegenerate={generateDatasetGlossary}
+              onSave={(entry) => saveGlossaryEntry("", entry)}
+            />
+            {savedGlossaryMap[drawerAsset.id]?.["__dataset__"] && !datasetGlossary ? (
+              <GlossaryTermPanel
+                entry={{
+                  ...savedGlossaryMap[drawerAsset.id]["__dataset__"],
+                  title: savedGlossaryMap[drawerAsset.id]["__dataset__"].title,
+                  saved_status: savedGlossaryMap[drawerAsset.id]["__dataset__"].status,
+                }}
+                onRegenerate={generateDatasetGlossary}
+                onSave={(entry) => saveGlossaryEntry("", entry)}
+              />
+            ) : null}
 
             <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3 dark:border-indigo-900/40 dark:bg-indigo-950/20">
               <p className="text-xs font-bold uppercase tracking-wide text-blue-800 dark:text-indigo-300">
@@ -301,25 +630,67 @@ function CatalogPageContent() {
                     .split(",")
                     .map((f) => f.trim())
                     .filter(Boolean)
-                    .map((field) => (
-                      <li key={field} className="flex items-center justify-between gap-2 font-mono text-xs">
-                        <span className="text-zinc-800 dark:text-zinc-200">{field}</span>
-                        {classificationResult?.all_fields?.find((r) => r.field_name === field) ? (
-                          <ClassificationBadge
-                            classification={
-                              classificationResult.all_fields.find((r) => r.field_name === field)
-                                .classification
-                            }
-                            size="xs"
-                          />
-                        ) : fieldClassifications[drawerAsset.id]?.[field] ? (
-                          <ClassificationBadge
-                            classification={fieldClassifications[drawerAsset.id][field]}
-                            size="xs"
-                          />
-                        ) : null}
-                      </li>
-                    ))}
+                    .map((field) => {
+                      const saved = savedGlossaryMap[drawerAsset.id]?.[field.toLowerCase()];
+                      const generated = glossaryByField[field];
+                      const showGlossary = generated || saved;
+                      return (
+                        <li key={field} className="space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
+                            <span className="text-zinc-800 dark:text-zinc-200">{field}</span>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => generateFieldGlossary(field)}
+                                disabled={glossaryLoadingField === field}
+                              >
+                                {glossaryLoadingField === field ? "…" : "Generate Definition"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => suggestFieldRules(field)}
+                                disabled={fieldRuleLoading === field}
+                              >
+                                {fieldRuleLoading === field ? "…" : "Suggest Rules"}
+                              </Button>
+                              {classificationResult?.all_fields?.find((r) => r.field_name === field) ? (
+                                <ClassificationBadge
+                                  classification={
+                                    classificationResult.all_fields.find((r) => r.field_name === field)
+                                      .classification
+                                  }
+                                  size="xs"
+                                />
+                              ) : fieldClassifications[drawerAsset.id]?.[field] ? (
+                                <ClassificationBadge
+                                  classification={fieldClassifications[drawerAsset.id][field]}
+                                  size="xs"
+                                />
+                              ) : null}
+                            </div>
+                          </div>
+                          {showGlossary ? (
+                            <GlossaryTermPanel
+                              compact
+                              loading={glossaryLoadingField === field}
+                              entry={
+                                generated || {
+                                  ...saved,
+                                  field_name: field,
+                                  saved_status: saved?.status,
+                                }
+                              }
+                              onRegenerate={() => generateFieldGlossary(field)}
+                              onSave={(entry) => saveGlossaryEntry(field, entry)}
+                            />
+                          ) : null}
+                        </li>
+                      );
+                    })}
                 </ul>
               ) : (
                 <p className="mt-2 font-mono text-xs text-zinc-800 dark:text-zinc-200">

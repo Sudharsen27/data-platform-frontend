@@ -18,6 +18,7 @@ const PROTECTED_PREFIXES = [
   "/duplicates",
   "/upload",
   "/ai-activity",
+  "/governance",
   "/copilot",
   "/profile",
 ];
@@ -28,7 +29,7 @@ function isProtectedPath(pathname: string) {
   );
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if (!isProtectedPath(pathname)) {
     return NextResponse.next();
@@ -71,6 +72,8 @@ export const config = {
     "/upload/:path*",
     "/ai-activity",
     "/ai-activity/:path*",
+    "/governance",
+    "/governance/:path*",
     "/copilot",
     "/copilot/:path*",
     "/profile",

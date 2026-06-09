@@ -10,6 +10,7 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import Toast from "@/components/ui/Toast";
 import Drawer, { DrawerFooterActions } from "@/components/ui/Drawer";
 import CompareThreeColumn from "@/components/governance/CompareThreeColumn";
+import RemediationPanel from "@/components/governance/RemediationPanel";
 import Spinner from "@/components/ui/Spinner";
 import {
   approveStewardship,
@@ -20,6 +21,13 @@ import {
   getAnnotations,
   getMasterDataCompare,
   getStewardshipPage,
+  getStewardshipRemediation,
+  postStewardshipExplain,
+  postStewardshipRemediationAccept,
+  postStewardshipRemediationAssign,
+  postStewardshipRemediationReject,
+  postStewardshipRemediationResolve,
+  postStewardshipRemediate,
   rejectStewardship,
   runAiSuggestStewardshipOwners,
 } from "@/lib/api";
@@ -79,6 +87,12 @@ export default function StewardshipPage() {
   const [annotationLoading, setAnnotationLoading] = useState(false);
   const [annotationSaving, setAnnotationSaving] = useState(false);
   const [annotationComment, setAnnotationComment] = useState("");
+  const [remediationDrawer, setRemediationDrawer] = useState(null);
+  const [remediationLoading, setRemediationLoading] = useState(false);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [remediationResult, setRemediationResult] = useState(null);
+  const [explainResult, setExplainResult] = useState(null);
+  const [assignEmail, setAssignEmail] = useState("");
 
   const activeTask = useMemo(
     () => rows.find((row) => row.id === activeId) || compareDrawer?.row || null,
@@ -148,6 +162,108 @@ export default function StewardshipPage() {
     }, 4200);
     return () => clearTimeout(timer);
   }, [message, errorMessage]);
+
+  async function openRemediationDrawer(row) {
+    setRemediationDrawer({ row });
+    setRemediationResult(null);
+    setExplainResult(null);
+    setAssignEmail(row.owner_email || "");
+    try {
+      const saved = await getStewardshipRemediation(row.id);
+      if (saved) {
+        setRemediationResult(saved);
+      }
+    } catch {
+      /* optional */
+    }
+  }
+
+  async function handleExplainFailure() {
+    if (!remediationDrawer?.row?.id) {
+      return;
+    }
+    try {
+      setExplainLoading(true);
+      setErrorMessage("");
+      const payload = await postStewardshipExplain(remediationDrawer.row.id);
+      setExplainResult(payload);
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to explain failure.");
+    } finally {
+      setExplainLoading(false);
+    }
+  }
+
+  async function handleSuggestFix() {
+    if (!remediationDrawer?.row?.id) {
+      return;
+    }
+    try {
+      setRemediationLoading(true);
+      setErrorMessage("");
+      const payload = await postStewardshipRemediate(remediationDrawer.row.id);
+      setRemediationResult(payload);
+      setMessage("Remediation analysis generated.");
+    } catch (error) {
+      setErrorMessage(error.message || "Remediation failed.");
+    } finally {
+      setRemediationLoading(false);
+    }
+  }
+
+  async function handleAcceptRemediation(result) {
+    if (!result?.id) {
+      return;
+    }
+    try {
+      const saved = await postStewardshipRemediationAccept(result.id);
+      setRemediationResult(saved);
+      setMessage("Remediation fix accepted.");
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to accept fix.");
+    }
+  }
+
+  async function handleRejectRemediation(result) {
+    if (!result?.id) {
+      return;
+    }
+    try {
+      const saved = await postStewardshipRemediationReject(result.id);
+      setRemediationResult(saved);
+      setMessage("Remediation fix rejected.");
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to reject fix.");
+    }
+  }
+
+  async function handleResolveRemediation(result) {
+    if (!result?.id) {
+      return;
+    }
+    try {
+      const saved = await postStewardshipRemediationResolve(result.id);
+      setRemediationResult(saved);
+      setMessage("Remediation marked resolved.");
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to mark resolved.");
+    }
+  }
+
+  async function handleAssignSteward(result) {
+    if (!result?.id || !assignEmail.trim()) {
+      setErrorMessage("Enter a steward email to assign.");
+      return;
+    }
+    try {
+      const saved = await postStewardshipRemediationAssign(result.id, assignEmail.trim());
+      setRemediationResult(saved);
+      await loadPage();
+      setMessage("Steward assigned.");
+    } catch (error) {
+      setErrorMessage(error.message || "Failed to assign steward.");
+    }
+  }
 
   async function handleCompare(id) {
     const row = rows.find((r) => r.id === id);
@@ -456,6 +572,55 @@ export default function StewardshipPage() {
         {compareDrawer?.data ? <CompareThreeColumn data={compareDrawer.data} /> : null}
       </Drawer>
       <Drawer
+        open={Boolean(remediationDrawer)}
+        onClose={() => setRemediationDrawer(null)}
+        title={
+          remediationDrawer?.row?.id
+            ? `Remediation #${remediationDrawer.row.id}`
+            : "Remediation"
+        }
+        subtitle={remediationDrawer?.row?.issue || "AI stewardship remediation"}
+        width="max-w-2xl"
+        footer={
+          <DrawerFooterActions>
+            <Button size="sm" variant="secondary" onClick={() => setRemediationDrawer(null)}>
+              Close
+            </Button>
+          </DrawerFooterActions>
+        }
+      >
+        {remediationDrawer?.row ? (
+          <div className="space-y-4">
+            <dl className="grid gap-2 text-sm">
+              <div>
+                <dt className="text-xs font-semibold uppercase text-[var(--text-muted)]">Record</dt>
+                <dd>
+                  {remediationDrawer.row.name} · {remediationDrawer.row.email || "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase text-[var(--text-muted)]">Issue</dt>
+                <dd>{remediationDrawer.row.issue || "—"}</dd>
+              </div>
+            </dl>
+            <RemediationPanel
+              loading={remediationLoading}
+              explainLoading={explainLoading}
+              result={remediationResult}
+              explainResult={explainResult}
+              onExplain={handleExplainFailure}
+              onRemediate={handleSuggestFix}
+              onAccept={handleAcceptRemediation}
+              onReject={handleRejectRemediation}
+              onResolve={handleResolveRemediation}
+              onAssign={handleAssignSteward}
+              assignEmail={assignEmail}
+              onAssignEmailChange={setAssignEmail}
+            />
+          </div>
+        ) : null}
+      </Drawer>
+      <Drawer
         open={Boolean(annotationDrawer)}
         onClose={() => setAnnotationDrawer(null)}
         title={
@@ -750,6 +915,14 @@ export default function StewardshipPage() {
                                 onClick={() => handleCompare(row.id)}
                               >
                                 {compareLoadingId === row.id ? "…" : "Compare"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => openRemediationDrawer(row)}
+                              >
+                                Remediate
                               </Button>
                               <Button
                                 type="button"
