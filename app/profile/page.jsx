@@ -7,10 +7,12 @@ import Button from "@/components/ui/Button";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import Toast from "@/components/ui/Toast";
 import { getMyProfile, updateMyPassword, updateMyProfile } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { useRequireAuth } from "@/lib/auth";
 
 export default function ProfilePage() {
   const { isCheckingAuth } = useRequireAuth();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
@@ -73,6 +75,9 @@ export default function ProfilePage() {
         full_name: form.full_name.trim(),
         company_name: form.company_name.trim(),
       });
+      if (updated.access_token) {
+        login(updated.access_token);
+      }
       setForm((prev) => ({
         ...prev,
         full_name: updated.full_name || prev.full_name,
@@ -80,7 +85,7 @@ export default function ProfilePage() {
         role: updated.role || prev.role,
       }));
       setToastType("success");
-      setToastMessage("Profile updated.");
+      setToastMessage("Profile updated. Header name refreshed.");
     } catch (err) {
       setErrorMessage(err?.message || "Failed to update profile");
     } finally {
